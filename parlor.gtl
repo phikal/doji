@@ -13,9 +13,11 @@
 				 margin: 2.5% auto 0 auto;
 			 }
 
-			 tt {
+			 code {
 				 font-family: monospace, monospace;
 				 color: #353;
+				 display: inline-block;
+				 word-break: break-all;
 			 }
 
 			 section {
@@ -61,7 +63,8 @@
 
 			 div#log > ul#msg,
 			 div#other > ul#video-list {
-				 overflow-x: auto;
+				 overflow-x: hidden;
+				 overflow-y: auto;
 				 list-style: none;
 				 max-height: 350px;
 				 margin: 0;
@@ -104,7 +107,10 @@
 				 height: 275px;
 			 }
 
-			 div#other > ul#video-list { margin-top: 19px; }
+			 div#other > ul#video-list {
+				 margin-top: 19px;
+				 max-height: 256px;
+			 }
 			 div#other > ul#video-list > li {
 				 cursor: pointer;
 				 word-break: break-all;
@@ -194,6 +200,7 @@
 			 ytdl = document.getElementById("ytdl");
 
 		 video.currentTime = {{ .Progress }};
+		 video.volume = 0.25;
 		 if ({{ not .Paused }})
 			 video.play();
 
@@ -272,12 +279,11 @@
 							 sec = s % 60;
 						 sec = sec - (sec % 1)
 						 l.innerHTML = "<b>" + msg.from + "</b> moved to " +
-									   hour + ":" + min + ":" + sec +
-									   " (" +(s) + "s)";
+									   hour + ":" + min + ":" + sec;
 						 break;
 					 case "select":
 						 l.classList.add("select");
-						 l.innerHTML = "<b>" + msg.from + "</b> selected new video: <tt>" + msg.msg + "</tt>";
+						 l.innerHTML = "<b>" + msg.from + "</b> selected new video: <code>" + msg.msg + "</code>";
 						 break;
 					 case "request":
 						 l.classList.add("request")
