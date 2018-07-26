@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+	<head>
+		<title>doji</title>
+		<meta charset="utf-8" />
+		<meta name="referrer" content="none" />
+		<meta name="viewport" content="width=device-width" />
+		<style>
+		 form {
+			 border: solid;
+			 padding: 1em;
+			 display: table;
+			 background: #feb;
+			 margin: 10% auto;
+			 font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif;
+		 }
+
+		 form input {
+			 background: #eda;
+			 border-width: 0;
+			 padding: 4px;
+		 }
+		</style>
+	</head>
+	<body>
+		<form method="POST" action="/">
+			<table><tbody>
+				<tr>
+					<td>name:</td>
+					<td><input name="name" type="text" /></td>
+				</tr>
+				<tr>
+					<td></td>
+					<td><input value="create/join" type="submit" /></td>
+				</tr>
+			</tbody></table>
+		</form>
+	</body>
+</html>
