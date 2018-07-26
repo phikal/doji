@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 
 	ws "github.com/gorilla/websocket"
-	"strings"
 )
 
 var (
@@ -35,24 +35,26 @@ func createParlor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.PostFormValue("name")
-	if _, ok := parlors[id]; !ok {
-		id = rndName()
-		lock.Lock()
-		parlors[id] = &Parlor{
-			Users:  make(map[string]*User),
-			Key:    id,
-			lock:   &sync.Mutex{},
-			format: "best",
-		}
-		lock.Unlock()
-
-		if err := os.Mkdir(id, os.ModeDir|0755); err != nil {
-			log.Fatalln(err)
-		}
-
-		go parlors[id].statusMonitor()
+	id := rndName()
+	lock.Lock()
+	parlors[id] = &Parlor{
+		Users:  make(map[string]*User),
+		Key:    id,
+		lock:   &sync.Mutex{},
+		format: "best",
 	}
+	lock.Unlock()
+
+	if err := os.Mkdir(id, os.ModeDir|0755); err != nil {
+		log.Fatalln(err)
+	}
+
+	go parlors[id].statusMonitor()
+
+	http.SetCookie(w, &http.Cookie{
+		Name:  "user",
+		Value: r.PostFormValue("name"),
+	})
 
 	http.Redirect(w, r, "./"+id, http.StatusFound)
 
