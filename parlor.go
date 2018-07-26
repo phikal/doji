@@ -38,6 +38,10 @@ func (p *Parlor) processCommands(u *User, fields []string) bool {
 	}
 
 	switch fields[0] {
+	case "/update":
+		for _, u := range p.Users {
+			p.notif <- u
+		}
 	case "/format":
 		if len(fields) > 1 {
 			p.format = fields[1]
