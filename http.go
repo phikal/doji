@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	ws "github.com/gorilla/websocket"
 )
@@ -52,8 +53,9 @@ func createParlor(w http.ResponseWriter, r *http.Request) {
 	go parlors[id].statusMonitor()
 
 	http.SetCookie(w, &http.Cookie{
-		Name:  "user",
-		Value: r.PostFormValue("name"),
+		Name:    "user",
+		Value:   r.PostFormValue("name"),
+		Expires: time.Now().Add(time.Hour * 24 * 7),
 	})
 
 	http.Redirect(w, r, "./"+id, http.StatusFound)
