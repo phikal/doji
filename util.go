@@ -1,19 +1,28 @@
 package main
 
 import (
+	"log"
 	"math/rand"
 	"os"
 	"syscall"
 )
 
-const rchars = "aeiouxyz"
+const consonants = "skwvyxz"
+const vouls = "aeiou"
 
 // generate a random string
 func rndName() string {
 	for {
 		name := make([]byte, 4)
+		var dict string = consonants
 		for i := 0; i < 4; i++ {
-			name[i] = rchars[rand.Int()%len(rchars)]
+			name[i] = dict[rand.Int()%len(dict)]
+
+			if dict == vouls {
+				dict = consonants
+			} else {
+				dict = vouls
+			}
 		}
 
 		if _, ok := parlors[string(name)]; !ok {
