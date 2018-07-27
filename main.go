@@ -1,17 +1,17 @@
 package main
 
-//go:generate go-bindata -o templ.go foyer.gtl parlor.gtl
+//go:generate go-bindata -o templ.go style.css foyer.gtl parlor.gtl
 
 import (
 	"html/template"
 	"io/ioutil"
 	"log"
 	"math/rand"
+	"mime"
 	"net/http"
 	"os"
 	"os/signal"
 	"path"
-	"syscall"
 	"time"
 )
 
@@ -26,18 +26,28 @@ const (
 	msgReqst  = "request"
 )
 
+var style []byte
+
 func main() {
 	// set PRNG seed
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	// parse templates
-	for _, t := range []string{"parlor", "foyer"} {
-		asset, err := Asset(t + ".gtl")
-		if err != nil {
-			log.Fatalln(err)
-		}
+	if asset, err := Asset("parlor.gtl"); err != nil {
+		log.Fatalln(err)
+	} else {
+		tmpl = template.Must(tmpl.New("parlor").Parse(string(asset)))
+	}
 
-		tmpl = template.Must(tmpl.New(t).Parse(string(asset)))
+	if asset, err := Asset("foyer.gtl"); err != nil {
+		log.Fatalln(err)
+	} else {
+		tmpl = template.Must(tmpl.New("foyer").Parse(string(asset)))
+	}
+
+	if asset, err := Asset("style.css"); err != nil {
+		log.Fatalln(err)
+	} else {
+		style = asset
 	}
 
 	// create directory structure
@@ -52,11 +62,17 @@ func main() {
 
 	// process signals
 	schan := make(chan os.Signal)
-	signal.Notify(schan, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGUSR1)
+	signal.Notify(schan, os.Interrupt, os.Kill)
 	go sigHandler(schan, pwd)
 
 	// configure HTTP
 	http.Handle("/d/", http.StripPrefix("/d/", http.FileServer(http.Dir(pwd))))
+	http.HandleFunc("/style.css", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", mime.TypeByExtension(".css")+"; charset=utf-8")
+		if _, err := w.Write(style); err != nil {
+			log.Fatalln(err)
+		}
+	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" || r.Method == http.MethodPost {
 			parlor(w, r)

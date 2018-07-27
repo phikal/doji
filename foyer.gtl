@@ -5,22 +5,7 @@
 		<meta charset="utf-8" />
 		<meta name="referrer" content="none" />
 		<meta name="viewport" content="width=device-width" />
-		<style>
-		 form {
-			 border: solid;
-			 padding: 1em;
-			 display: table;
-			 background: #feb;
-			 margin: 10% auto;
-			 font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif;
-		 }
-
-		 form input {
-			 background: #eda;
-			 border-width: 0;
-			 padding: 4px;
-		 }
-		</style>
+		<link rel="stylesheet" type="text/css" href="./style.css" />
 	</head>
 	<body>
 		<form method="POST" action="/">
