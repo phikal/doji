@@ -89,6 +89,7 @@ func (p *Parlor) statusMonitor() {
 		if !p.Paused {
 			progress += time.Since(p.updated).Seconds()
 		}
+		p.lock.Lock()
 		msg.Data = map[string]interface{}{
 			"vids":     p.Videos,
 			"users":    p.Users,
@@ -103,7 +104,7 @@ func (p *Parlor) statusMonitor() {
 			notif <- user
 			time.Sleep(time.Millisecond * 50)
 		}
-
+		p.lock.Unlock()
 	}
 }
 

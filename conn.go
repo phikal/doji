@@ -36,6 +36,7 @@ func (p *Parlor) processConn(conn *ws.Conn, user string) {
 		}
 
 		// interpret message
+		p.lock.Lock()
 		switch msg.Type {
 		case msgTalk:
 			fields := strings.Fields(msg.Msg)
@@ -44,6 +45,7 @@ func (p *Parlor) processConn(conn *ws.Conn, user string) {
 			}
 		case msgPlay:
 			p.Paused = false
+			p.updated = time.Now()
 		case msgPause:
 			p.Paused = true
 			fallthrough
@@ -56,7 +58,7 @@ func (p *Parlor) processConn(conn *ws.Conn, user string) {
 		case msgReqst:
 			go p.getVideo(msg.Msg)
 		}
-		p.updated = time.Now()
+		p.lock.Unlock()
 
 		// re-process message
 		switch msg.Type {
