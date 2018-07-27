@@ -156,6 +156,8 @@ div#other > input#ytdl {
 		padding: 0;
 	}
 
+	form { margin: 2.5% auto; }
+
 	aside > div#other,
 	aside > div#log {
 		float: none;
