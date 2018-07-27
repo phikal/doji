@@ -27,7 +27,7 @@ var (
 	}
 
 	// path regular expression
-	pathRe = regexp.MustCompile("^/([" + rchars + "]+)")
+	pathRe = regexp.MustCompile("^/([" + vouls + consonants + "]+)")
 )
 
 func createParlor(w http.ResponseWriter, r *http.Request) {
