@@ -1,174 +1,16 @@
 <!doctype html>
 <html>
 	{{ with . }}
-		<head>
+		<head lang="en">
 			<title>doji [{{ .Key }}]</title>
 			<meta charset="utf-8" />
 			<meta name="referrer" content="none" />
 			<meta name="viewport" content="width=device-width" />
-			<style>
-			 body {
-				 width: 700px;
-				 font-family: sans-serif;
-				 margin: 2.5% auto 0 auto;
-			 }
-
-			 code {
-				 font-family: monospace, monospace;
-				 color: #353;
-				 display: inline-block;
-				 word-break: break-all;
-			 }
-
-			 section {
-				 width: 100%;
-				 display: block;
-				 background: black;
-			 }
-
-			 video {
-				 display: block;
-				 margin: auto;
-				 max-width: 96%;
-			 }
-
-			 aside > div {
-				 float: left;
-				 border: solid;
-				 display: block;
-			 }
-
-			 div#log {
-				 width: calc(50% - 8px);
-				 background: #bef;
-				 position: relative;
-				 padding: 0;
-				 display: inline-block;
-				 min-height: 275px;
-				 max-height: 400px;
-
-			 }
-
-			 div#log > div#users {
-				 border-bottom: 1px solid black;
-				 background: #8ad;
-				 padding: 2px 0 2px 2px;
-			 }
-
-			 div#log > div#users > span {
-				 border-right: 1px solid black;
-				 padding: 2px 4px;
-				 margin: 0;
-			 }
-
-			 div#log > ul#msg,
-			 div#other > ul#video-list {
-				 overflow-x: hidden;
-				 overflow-y: auto;
-				 list-style: none;
-				 max-height: 350px;
-				 margin: 0;
-				 padding: 0;
-			 }
-
-			 div#log > ul#msg {
-				 margin-bottom: 18px;
-			 }
-
-			 div#log > ul#msg > li:nth-child(even) { background: #8ad; }
-
-			 div#log > ul#msg > li.request {
-				 font-family: monospace, monospace;
-				 font-style: italic;
-				 font-size: smaller;
-			 }
-
-			 div#log > input#prompt,
-			 div#other > input#ytdl {
-				 position: absolute;
-				 left: 0;
-				 right: 0;
-				 border-width: 0;
-				 background: whitesmoke;
-				 width: calc(100% - 2px);
-			 }
-
-			 div#log > input#prompt {
-				 bottom: 0;
-				 border-top: 1px solid black;
-			 }
-
-			 div#other {
-				 width: calc(50% - 1px);
-				 background: #fbe;
-				 position: relative;
-				 border-left-width: 0;
-				 overflow-y: auto;
-				 height: 275px;
-			 }
-
-			 div#other > ul#video-list {
-				 margin-top: 19px;
-				 max-height: 256px;
-			 }
-			 div#other > ul#video-list > li {
-				 cursor: pointer;
-				 word-break: break-all;
-				 font-family: monospace, monospace;
-			 }
-			 div#other > ul#video-list > li:nth-child(even) { background: #d8a; }
-			 div#other > ul#video-list > li:hover { background: #b69; }
-
-			 div#other > input#ytdl {
-				 top: 0;
-				 border-bottom: 1px solid black;
-			 }
-
-			 @media only screen and (max-width: 700px) {
-				 body, html {
-					 width: 100%;
-					 min-width: initial;
-					 margin: 0;
-					 padding: 0;
-				 }
-
-				 section,
-				 aside > div#other,
-				 aside > div#log {
-					 float: none;
-					 width: 100%;
-					 height: 400px;
-					 max-height: 400px;
-					 font-size: 1.25em;
-					 border-width: 4px 0 0 0;
-				 }
-
-				 aside {
-					 display: flex;
-					 flex-direction: column-reverse;
-				 }
-
-				 div#log > input#prompt,
-				 div#other > input#ytdl {
-					 font-size: 1.25em;
-					 padding: 4px;
-					 width: calc(100% - 8px);
-				 }
-
-				 div#log > ul#msg { margin-bottom: 2.1em; }
-				 div#other > ul#video-list { margin-top: 2.1em; }
-
-				 div#log > input#prompt {
-					 border-bottom: 4px solid black;
-					 font-size: inherit;
-					 bottom: -0.9em
-				 }
-			 }
-			</style>
+			<link rel="stylesheet" type="text/css" href="./style.css" />
 		</head>
 		<body>
 			<section>
-				<video id="vid" controls
+				<video id="vid" controls preload
 					   {{ if .Watching }}
 					   src="/d/{{ .Key }}/{{ .Watching }}"
 					   {{ end }}>
@@ -190,215 +32,241 @@
 					</ul>
 				</div>
 			</aside>
-		</body>
-		<script>
-		 var video = document.getElementById("vid"),
-			 users = document.getElementById("users"),
-			 prompt = document.getElementById("prompt"),
-			 log = document.getElementById("msg"),
-			 videos = document.getElementById("video-list"),
-			 ytdl = document.getElementById("ytdl");
+						<script>
+			 "use strict";
 
-		 video.currentTime = {{ .Progress }};
-		 video.volume = 0.25;
-		 if ({{ not .Paused }})
-			 video.play();
+			 window.onload = function() {
+				 const moffset = 0.38196601125; // maximal playback offset
 
-		 (function(user) {
-			 function load_video(vid) {
-				 var parser = document.createElement('a');
-				 parser.href = video.src;
+				 const video = document.getElementById("vid"),
+					   users = document.getElementById("users"),
+					   prompt = document.getElementById("prompt"),
+					   log = document.getElementById("msg"),
+					   videos = document.getElementById("video-list"),
+					   ytdl = document.getElementById("ytdl");
 
-				 vid = "./d/" + window.location.pathname + "/" + vid;
-				 if (vid && vid != parser.pathname) {
-					 video.src = vid;
-					 video.load();
-				 }
-			 }
+				 video.currentTime = {{ .Progress }};
+				 video.volume = 0.25;
+				 if ({{ not .Paused }}) video.play();
 
-			 function load_status(data) {
-				 while(videos.firstChild)
-					 videos.removeChild(videos.firstChild);
+				 const user = document.cookie.replace(/(?:(?:^|.*;\s*)user\s*\=\s*([^;]*).*$)|^.*$/, "$1") ||
+							  (Math.random() + 1).toString(36).substring(7);
+				 document.cookie = "user=" + user;
 
-				 if (data.vids)
-					 data.vids.map(function(v) {
-						 var vid = document.createElement("li");
-						 vid.appendChild(document.createTextNode(v))
-						 vid.onclick = function() {
-							 socket.send(JSON.stringify({
-								 type: "select",
-								 msg: v
-							 }));
-						 }
-						 videos.appendChild(vid)
-					 })
+				 function load_video(vid) {
+					 var parser = document.createElement('a');
+					 parser.href = video.src;
 
-				 while(users.firstChild)
-					 users.removeChild(users.firstChild);
-				 for (u in data.users) {
-					 var tag = document.createElement("span");
-					 tag.appendChild(document.createTextNode(u))
-					 users.appendChild(tag);
+					 vid = "./d/" + window.location.pathname + "/" + vid;
+					 if (vid && vid != "." + parser.pathname) { // TODO: make cleverer
+						 video.src = vid;
+						 video.load();
+					 }
 				 }
 
-				 if (video.paused)
-					 load_video(data.playing);
+				 function load_status(data) {
+					 while(videos.firstChild)
+						 videos.removeChild(videos.firstChild);
 
-				 if (data.progress && video.currentTime != 0 &&
-					 Math.abs(video.currentTime - data.progress) > 1)
-					 video.currentTime = data.progress;
+					 if (data.vids)
+						 data.vids.map(function(v) {
+							 var vid = document.createElement("li");
+							 vid.appendChild(document.createTextNode(v))
+							 vid.onclick = function() {
+								 socket.send(JSON.stringify({
+									 type: "select",
+									 msg: v
+								 }));
+							 }
+							 videos.appendChild(vid)
+						 })
 
-				 if (data.paused)
-					 video.pause();
+					 while(users.firstChild)
+						 users.removeChild(users.firstChild);
+					 for (var u in data.users) {
+						 var tag = document.createElement("span");
+						 tag.appendChild(document.createTextNode(u))
+						 users.appendChild(tag);
+					 }
 
-				 prompt.disabled = ytdl.disabled = false;
-				 prompt.style.background = prompt.style.background = "white";
-			 }
+					 if (video.paused)
+						 load_video(data.playing);
 
-			 function log_msg(msg) {
-				 var l = document.createElement("li");
-				 switch(msg.type) {
-					 case "talk":
-						 l.classList.add("task");
-						 l.innerHTML = "<b>" + msg.from + ":</b> " + msg.msg;
-						 break;
-					 case "pause":
-						 l.classList.add("pause");
-						 l.innerHTML = "<b>" + msg.from + "</b> paused the video";
-						 break;
-					 case "play":
-						 l.classList.add("play");
-						 l.innerHTML = "<b>" + msg.from + "</b> started playing the video";
-						 break;
-					 case "seek":
-						 l.classList.add("seek");
-						 var s = msg.val;
-						 if (!s || s < 1) break;
-						 var hour = ~~(s / (60 * 60)),
-							 min = ~~((s % (60 * 60)) / 60),
-							 sec = s % 60;
-						 sec = sec - (sec % 1)
-						 l.innerHTML = "<b>" + msg.from + "</b> moved to " +
-									   hour + ":" + min + ":" + sec;
-						 break;
-					 case "select":
-						 l.classList.add("select");
-						 l.innerHTML = "<b>" + msg.from + "</b> selected new video: <code>" + msg.msg + "</code>";
-						 break;
-					 case "request":
-						 l.classList.add("request")
-						 l.innerHTML = msg.msg;
-						 break;
-					 default:
-						 return;
+					 console.log(data.progress + " :: " + video.currentTime);
+					 if (data.progress && video.currentTime != 0 &&
+						 Math.abs(video.currentTime - data.progress) > moffset)
+						 video.currentTime = data.progress;
+
+					 if (data.paused)
+						 video.pause();
+
+					 prompt.disabled = ytdl.disabled = false;
+					 prompt.style.background = prompt.style.background = "white";
 				 }
-				 log.appendChild(l);
-				 log.scrollTop = log.scrollHeight;
-			 }
 
-			 var remote = false, seeking = false; /* hacked */
-			 var socket = new WebSocket(location.href.replace(/https?:\/\//, "ws://") +
-										"/socket");
-			 socket.onmessage = function (evt) {
-				 remote = true;
-				 var msg = JSON.parse(evt.data);
-				 var timestamp = new Date().toLocaleTimeString();
-				 switch(msg.type) {
-					 case "pause":
-						 if (msg.from != user)
-							 video.pause();
-						 break;
-					 case "play":
-						 if (msg.from != user && video.paused)
+				 function log_msg(msg) {
+					 var l = document.createElement("li");
+					 l.classList.add(msg.type);
+					 switch(msg.type) {
+						 case "talk":
+							 l.innerHTML = "<b>" + msg.from + ":</b> ";
+							 l.innerText += msg.msg;
+							 break;
+						 case "pause":
+							 l.innerHTML = "<b>" + msg.from + "</b> paused the video";
+							 break;
+						 case "play":
+							 l.innerHTML = "<b>" + msg.from + "</b> started playing the video";
+							 break;
+						 case "seek":
+							 var s = msg.val;
+							 if (!s || s < 1) break;
+							 var hour = ~~(s / (60 * 60)),
+								 min = ~~((s % (60 * 60)) / 60),
+								 sec = s % 60;
+							 sec = sec - (sec % 1)
+							 l.innerHTML = "<b>" + msg.from + "</b> moved to " +
+										   hour + ":" + min + ":" + sec;
+							 break;
+						 case "select":
+							 l.innerHTML = "<b>" + msg.from + "</b> selected new video: <code>" + msg.msg + "</code>";
+							 break;
+						 case "event":
+						 case "request":
+							 l.innerHTML = msg.msg;
+							 break;
+						 default:
+							 return;
+					 }
+					 log.appendChild(l);
+					 log.scrollTop = log.scrollHeight;
+				 }
+
+				 var remote = false, seeking = false; /* hacked */
+				 const socket = new WebSocket(location.href.replace(/https?:\/\//, "ws://") +
+											  "/socket");
+				 socket.onmessage = function (e) {
+					 remote = true;
+					 var msg = JSON.parse(e.data);
+					 var timestamp = new Date().toLocaleTimeString();
+					 switch(msg.type) {
+						 case "pause":
+							 if (msg.from != user)
+								 video.pause();
+							 break;
+						 case "play":
+							 if (msg.from != user && video.paused)
+								 video.play();
+							 break;
+						 case "seek":
+							 console.log(msg.val + " // " + video.currentTime);
+							 if (msg.from != user && msg.val != undefined &&
+								 Math.abs(msg.val - video.currentTime) > moffset)
+								 video.currentTime = msg.val;
 							 video.play();
-						 break;
-					 case "seek":
-						 if (msg.from != user && Math.abs(video.currentTime - msg.val) > 1)
-							 video.currentTime = msg.val;
-						 video.play();
-						 break;
-					 case "select":
-						 load_video(msg.msg);
-						 break;
-					 case "status":
-						 load_status(msg.data);
-						 break;
-				 }
-				 log_msg(msg);
-				 setTimeout(function() {
-					 remote = false;
-				 }, 100);
-			 };
+							 break;
+						 case "select":
+							 load_video(msg.msg);
+							 break;
+						 case "status":
+							 load_status(msg.data);
+							 break;
+					 }
+					 log_msg(msg);
+					 setTimeout(function() {
+						 remote = false;
+					 }, 100);
+				 };
 
-			 // video events
-			 video.onpause = function() {
-				 if (remote || seeking) return;
-				 socket.send(JSON.stringify({
-					 type: "pause",
-					 val: video.currentTime
-				 }));
-			 }
-
-			 video.onplay = function() {
-				 if (remote || seeking) return;
-				 socket.send(JSON.stringify({ type: "play" }));
-				 video.style.height = video.clientHeight + "px";
-			 }
-
-			 video.onseeked = function() {
-				 if (remote) return;
-				 seeking = true;
-				 video.pause();
-				 socket.send(JSON.stringify({
-					 type: "seek",
-					 val: video.currentTime
-				 }));
-				 setTimeout(function() {
-					 seeking = false;
-				 }, 100);
-			 }
-
-			 // input events
-			 prompt.onkeypress = function(evt) {
-				 if (evt.key == "Enter" && prompt.value) {
+				 // video events
+				 video.onstalled = video.onpause = function() {
+					 if (remote || seeking) return;
 					 socket.send(JSON.stringify({
-						 type: "talk",
-						 msg: prompt.value.trim()
+						 type: "pause",
+						 val: video.currentTime,
 					 }));
-					 prompt.value = "";
 				 }
-			 }
 
-			 ytdl.onkeypress = function(evt) {
-				 if (evt.key == "Enter" && ytdl.value) {
+				 video.onplay = function() {
+					 if (remote || seeking) return;
 					 socket.send(JSON.stringify({
-						 type: "request",
-						 msg: ytdl.value.trim()
+						 type: "play",
+						 val: video.currentTime,
 					 }));
-					 ytdl.value = "";
+				 }
+
+				 video.onseeked = function() {
+					 if (remote) return;
+					 seeking = true;
+					 video.pause();
+					 socket.send(JSON.stringify({
+						 type: "seek",
+						 val: video.currentTime
+					 }));
+					 setTimeout(function() {
+						 seeking = false;
+					 }, 100);
+				 }
+
+				 // input events
+				 prompt.onkeypress = function(e) {
+					 if (e.key == "Enter" && prompt.value) {
+						 socket.send(JSON.stringify({
+							 type: "talk",
+							 msg: prompt.value.trim()
+						 }));
+						 prompt.value = "";
+					 }
+				 }
+
+				 ytdl.onkeypress = function(e) {
+					 if (e.key == "Enter" && ytdl.value) {
+						 socket.send(JSON.stringify({
+							 type: "request",
+							 msg: ytdl.value.trim()
+						 }));
+						 ytdl.value = "";
+					 }
+				 }
+
+				 // window events
+				 window.onbeforeunload = function () {
+					 socket.close();
+				 }
+
+				 // setup
+				 socket.onerror = function(err) {
+					 log_msg({
+						 type: "event",
+						 msg: "<b>socket error:</b> <code>" + err + "</code>!"
+					 })
+				 }
+
+				 socket.onclose = function(e) {
+					 log_msg({
+						 type: "event",
+						 msg: "<em>socket" + (e.wasClean ? "" : " abruptly") +
+							  " closed with code " + e.code + "</em>"
+					 })
+				 }
+
+				 // request data to load
+				 function check() {
+					 socket.send(JSON.stringify({ type: "status" }));
+				 }
+
+				 socket.onopen = function() {
+					 var name = window.location.pathname.substring(1);
+					 log_msg({
+						 type: "event",
+						 msg: "connected to <b>" + name + "</b> as <b>" + user + "</b>!"
+					 })
+					 check();
+					 setInterval(check, 2500);
 				 }
 			 }
-
-			 // window events
-			 window.onbeforeunload = function () {
-				 socket.close();
-			 }
-
-			 // request data to load
-			 function check() {
-				 socket.send(JSON.stringify({ type: "status" }));
-			 }
-
-			 // setup
-			 socket.onerror = console.log;
-
-			 socket.onopen = function() {
-				 check();
-				 setTimeout(check, 10);
-			 }
-		 })(document.cookie.replace(/(?:(?:^|.*;\s*)user\s*\=\s*([^;]*).*$)|^.*$/, "$1") ||
-			(document.cookie = "user=" + (Math.random() + 1).toString(36).substring(7)));
-		</script>
+			</script>
+		</body>
 	{{ else }}
 		<meta charset="utf-8" />
 		<meta name="referrer" content="none" />
