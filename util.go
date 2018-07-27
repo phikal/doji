@@ -4,7 +4,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"syscall"
 )
 
 const consonants = "skwvyxz"
@@ -33,15 +32,10 @@ func rndName() string {
 
 // handle user signals
 func sigHandler(c <-chan os.Signal, temp string) {
-	for {
-		switch <-c {
-		case syscall.SIGUSR1:
-			for _, p := range parlors {
-				p.loadVideos()
-			}
-		case syscall.SIGINT, syscall.SIGQUIT:
-			os.RemoveAll(temp)
-			os.Exit(0)
-		}
+	<-c
+	err := os.RemoveAll(temp)
+	if err != nil {
+		log.Panicln(err)
 	}
+	os.Exit(0)
 }
