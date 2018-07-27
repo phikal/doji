@@ -16,9 +16,10 @@
 				</tr>
 				<tr>
 					<td></td>
-					<td><input value="create/join" type="submit" /></td>
+					<td><input value="create" type="submit" /></td>
 				</tr>
 			</tbody></table>
 		</form>
+		<a id="help" href="https://dyst.ax.lt/~phi/proj/doji/#faq">?</a>
 	</body>
 </html>
