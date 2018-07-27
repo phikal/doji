@@ -56,6 +56,11 @@ func (p *Parlor) getVideo(url string) {
 	for out.Scan() {
 		var perc float64
 		fmt.Sscanf(out.Text(), "[download]  %f%%", &perc)
+
+		if progress == 0 && perc == 100 {
+			continue
+		}
+
 		if perc > progress+10 {
 			wall(fmt.Sprintf("Downloaded %.2f%%", perc))
 			progress = perc
@@ -64,6 +69,10 @@ func (p *Parlor) getVideo(url string) {
 		if perc > 10 && perc < 20 {
 			p.loadVideos()
 		}
+
+		if perc == 100 {
+			progress = 0
+		}
 	}
 
 	if err = cmd.Wait(); err != nil {
@@ -71,6 +80,5 @@ func (p *Parlor) getVideo(url string) {
 		return
 	}
 
-	p.loadVideos()
 	wall(fmt.Sprintf("Finished downloading %s", url))
 }
