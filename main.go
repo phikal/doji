@@ -24,6 +24,7 @@ const (
 	msgSelect = "select"
 	msgStatus = "status"
 	msgReqst  = "request"
+	msgEvent  = "event"
 )
 
 var style []byte
