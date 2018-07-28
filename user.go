@@ -10,7 +10,7 @@ type User struct {
 }
 
 func (u *User) talker() {
-	c := make(chan Msg)
+	c := make(chan Msg, 16)
 	u.msg = c
 	for {
 		u.conn.WriteJSON(<-c)
