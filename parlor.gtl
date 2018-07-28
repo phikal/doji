@@ -20,7 +20,7 @@
 			<aside>
 				<div id="log">
 					<div id="users">
-						{{ range .Users }}<span>{{ . }}</span>{{ end}}
+						{{ range $k, $v := .Users }}<span>{{ $k }}</span>{{ end}}
 					</div>
 					<ul id="msg"></ul>
 					<input type="text" id="prompt" disabled/>
