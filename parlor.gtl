@@ -9,14 +9,14 @@
 			<link rel="stylesheet" type="text/css" href="./style.css" />
 		</head>
 		<body>
-			<section>
+			<main>
 				<video id="vid" controls preload
 					   {{ if .Watching }}
 					   src="/d/{{ .Key }}/{{ .Watching }}"
 					   {{ end }}>
 					Oh no! This browser doesn't support HTML video.
 				</video>
-			</section>
+			</main>
 			<aside>
 				<div id="log">
 					<div id="users">
@@ -32,239 +32,275 @@
 					</ul>
 				</div>
 			</aside>
-						<script>
+			<script>
 			 "use strict";
 
-			 window.onload = function() {
-				 const moffset = 0.38196601125; // maximal playback offset
+			 const moffset = 0.38196601125; // maximal playback offset (sec)
+			 const rwait = 100; // ms wait for website to react
+			 const scint = 15000; // ms to wait between status requests
+			 const bufwait = 500; // ms to wait between buffering checks
 
-				 const video = document.getElementById("vid"),
-					   users = document.getElementById("users"),
-					   prompt = document.getElementById("prompt"),
-					   log = document.getElementById("msg"),
-					   videos = document.getElementById("video-list"),
-					   ytdl = document.getElementById("ytdl");
+			 const video = document.getElementById("vid");
+			 const users = document.getElementById("users");
+			 const prompt = document.getElementById("prompt");
+			 const log = document.getElementById("msg");
+			 const videos = document.getElementById("video-list");
+			 const ytdl = document.getElementById("ytdl");
 
-				 video.currentTime = {{ .Progress }};
-				 video.volume = 0.25;
-				 if ({{ not .Paused }}) video.play();
+			 video.currentTime = {{ .Progress }};
+			 video.volume = 0.25;
+			 if ({{ not .Paused }}) video.play();
 
-				 const user = document.cookie.replace(/(?:(?:^|.*;\s*)user\s*\=\s*([^;]*).*$)|^.*$/, "$1") ||
-							  (Math.random() + 1).toString(36).substring(7);
-				 document.cookie = "user=" + user;
+			 const user = document.cookie.replace(/(?:(?:^|.*;\s*)user\s*\=\s*([^;]*).*$)|^.*$/, "$1") ||
+						  (Math.random() + 1).toString(36).substring(7);
+			 document.cookie = "user=" + user;
 
-				 function load_video(vid) {
-					 var parser = document.createElement('a');
-					 parser.href = video.src;
+			 function jump_to(sec) {
+				 if (sec === undefined)
+					 return;
 
-					 vid = "./d/" + window.location.pathname + "/" + vid;
-					 if (vid && vid != "." + parser.pathname) { // TODO: make cleverer
-						 video.src = vid;
-						 video.load();
+				 function jump() {
+					 // if (Math.abs(sec - video.currentTime) > moffset)
+					 video.currentTime = sec;
+					 if (video.readyState > 2)
+						 video.play();
+				 }
+
+				 function check() {
+					 var buf = video.seekable;
+					 for (var i = 0; i < buf.length; i++) {
+						 if (buf.start(i) < sec && buf.end(i) > sec)
+							 jump(sec);
+						 else setTimeout(check, bufwait);
 					 }
 				 }
 
-				 function load_status(data) {
-					 while(videos.firstChild)
-						 videos.removeChild(videos.firstChild);
+				 video.pause();
+				 check();
+			 }
 
-					 if (data.vids)
-						 data.vids.map(function(v) {
-							 var vid = document.createElement("li");
-							 vid.appendChild(document.createTextNode(v))
-							 vid.onclick = function() {
-								 socket.send(JSON.stringify({
-									 type: "select",
-									 msg: v
-								 }));
-							 }
-							 videos.appendChild(vid)
-						 })
+			 function load_video(vid) {
+				 var parser = document.createElement('a');
+				 parser.href = video.src;
 
-					 while(users.firstChild)
-						 users.removeChild(users.firstChild);
-					 for (var u in data.users) {
-						 var tag = document.createElement("span");
-						 tag.appendChild(document.createTextNode(u))
-						 users.appendChild(tag);
-					 }
-
-					 if (video.paused)
-						 load_video(data.playing);
-
-					 console.log(data.progress + " :: " + video.currentTime);
-					 if (data.progress && video.currentTime != 0 &&
-						 Math.abs(video.currentTime - data.progress) > moffset)
-						 video.currentTime = data.progress;
-
-					 if (data.paused)
-						 video.pause();
-
-					 prompt.disabled = ytdl.disabled = false;
-					 prompt.style.background = prompt.style.background = "white";
-				 }
-
-				 function log_msg(msg) {
-					 var l = document.createElement("li");
-					 l.classList.add(msg.type);
-					 switch(msg.type) {
-						 case "talk":
-							 l.innerHTML = "<b>" + msg.from + ":</b> ";
-							 l.innerText += msg.msg;
-							 break;
-						 case "pause":
-							 l.innerHTML = "<b>" + msg.from + "</b> paused the video";
-							 break;
-						 case "play":
-							 l.innerHTML = "<b>" + msg.from + "</b> started playing the video";
-							 break;
-						 case "seek":
-							 var s = msg.val;
-							 if (!s || s < 1) break;
-							 var hour = ~~(s / (60 * 60)),
-								 min = ~~((s % (60 * 60)) / 60),
-								 sec = s % 60;
-							 sec = sec - (sec % 1)
-							 l.innerHTML = "<b>" + msg.from + "</b> moved to " +
-										   hour + ":" + min + ":" + sec;
-							 break;
-						 case "select":
-							 l.innerHTML = "<b>" + msg.from + "</b> selected new video: <code>" + msg.msg + "</code>";
-							 break;
-						 case "event":
-						 case "request":
-							 l.innerHTML = msg.msg;
-							 break;
-						 default:
-							 return;
-					 }
-					 log.appendChild(l);
-					 log.scrollTop = log.scrollHeight;
-				 }
-
-				 var remote = false, seeking = false; /* hacked */
-				 const socket = new WebSocket(location.href.replace(/https?:\/\//, "ws://") +
-											  "/socket");
-				 socket.onmessage = function (e) {
-					 remote = true;
-					 var msg = JSON.parse(e.data);
-					 var timestamp = new Date().toLocaleTimeString();
-					 switch(msg.type) {
-						 case "pause":
-							 if (msg.from != user)
-								 video.pause();
-							 break;
-						 case "play":
-							 if (msg.from != user && video.paused)
-								 video.play();
-							 break;
-						 case "seek":
-							 console.log(msg.val + " // " + video.currentTime);
-							 if (msg.from != user && msg.val != undefined &&
-								 Math.abs(msg.val - video.currentTime) > moffset)
-								 video.currentTime = msg.val;
-							 video.play();
-							 break;
-						 case "select":
-							 load_video(msg.msg);
-							 break;
-						 case "status":
-							 load_status(msg.data);
-							 break;
-					 }
-					 log_msg(msg);
-					 setTimeout(function() {
-						 remote = false;
-					 }, 100);
-				 };
-
-				 // video events
-				 video.onstalled = video.onpause = function() {
-					 if (remote || seeking) return;
-					 socket.send(JSON.stringify({
-						 type: "pause",
-						 val: video.currentTime,
-					 }));
-				 }
-
-				 video.onplay = function() {
-					 if (remote || seeking) return;
-					 socket.send(JSON.stringify({
-						 type: "play",
-						 val: video.currentTime,
-					 }));
-				 }
-
-				 video.onseeked = function() {
-					 if (remote) return;
-					 seeking = true;
+				 vid = "./d" + window.location.pathname + "/" + vid;
+				 if (vid && vid != "." + parser.pathname) { // TODO: make cleverer
+					 video.src = vid;
+					 video.load();
 					 video.pause();
-					 socket.send(JSON.stringify({
-						 type: "seek",
-						 val: video.currentTime
-					 }));
-					 setTimeout(function() {
-						 seeking = false;
-					 }, 100);
+					 video.currentTime = 0;
+				 }
+			 }
+
+			 function exec_cmd(cmd) {
+				 var matches = cmd.match(/^\/(\w+)\s+(.+)?/);
+				 if (!matches)
+					 return false;
+
+				 var arg;
+				 if (matches.length > 2)
+					 arg = matches[2];
+				 switch (matches[1]) {
+					 case "volume":
+						 if (arg) {
+							 video.volume = arg;
+							 log_msg({
+								 type: "event",
+								 msg: "<em>set volume to " + arg  + "%</em>"
+							 });
+						 }
+						 break;
 				 }
 
-				 // input events
-				 prompt.onkeypress = function(e) {
-					 if (e.key == "Enter" && prompt.value) {
+				 return true;
+			 }
+
+			 function load_status(data) {
+				 console.log(data);
+
+				 while(videos.firstChild)
+					 videos.removeChild(videos.firstChild);
+
+				 if (data.vids)
+					 data.vids.map(function(v) {
+						 var vid = document.createElement("li");
+						 vid.appendChild(document.createTextNode(v));
+						 vid.onclick = function() {
+							 socket.send(JSON.stringify({
+								 type: "select",
+								 msg: v
+							 }));
+						 }
+						 videos.appendChild(vid);
+					 })
+
+				 while(users.firstChild)
+					 users.removeChild(users.firstChild);
+				 for (var u in data.users) {
+					 var tag = document.createElement("span");
+					 tag.appendChild(document.createTextNode(u));
+					 if (u == user)
+						 tag.style.textDecoration = "underline";
+					 users.appendChild(tag);
+				 }
+
+				 load_video(data.playing);
+				 // jump_to(data.progress);
+				 if (data.paused) video.pause();
+			 }
+
+			 function log_msg(msg) {
+				 var l = document.createElement("li");
+				 l.classList.add(msg.type);
+				 switch(msg.type) {
+					 case "talk":
+						 l.innerHTML =  "<b>" + msg.from + ":</b> ";
+						 l.innerText += msg.msg;
+						 break;
+					 case "pause":
+						 l.innerHTML = "<b>" + msg.from + "</b> " +
+									   "paused the video";
+						 break;
+					 case "play":
+						 l.innerHTML = "<b>" + msg.from + "</b> " +
+									   "started playing the video";
+						 break;
+					 case "seek":
+						 var s = msg.val;
+						 if (!s || s < 1) break;
+						 var hour = ~~(s / (60 * 60)) ,
+							 min = ("0" + ~~((s % (60 * 60)) / 60)).slice(-2),
+							 sec = ("0" + (s % 60)).slice(-2);
+						 l.innerHTML = "<b>" + msg.from + "</b> moved to " +
+												(hour == 0 ? "" : hour + ":") +
+									   min + ":" + sec;
+						 break;
+					 case "select":
+						 l.innerHTML = "<b>" + msg.from + "</b> "
+						 "selected new video: <code>" +
+									   msg.msg + "</code>";
+						 break;
+					 case "event":
+					 case "request":
+						 l.innerHTML = msg.msg;
+						 break;
+					 default:
+						 return;
+				 }
+				 log.appendChild(l);
+				 log.scrollTop = log.scrollHeight;
+			 }
+
+			 var remote = false, seeking = false; /* hacked asf */
+			 const socket = new WebSocket(location.href.replace(/http/, "ws") +
+										  "/socket");
+			 socket.onmessage = function (e) {
+				 remote = true;
+				 var msg = JSON.parse(e.data);
+				 var timestamp = new Date().toLocaleTimeString();
+				 switch(msg.type) {
+					 case "pause":
+						 if (msg.from != user)
+							 video.pause();
+						 break;
+					 case "play":
+						 if (msg.from != user && video.paused)
+							 video.play();
+						 break;
+					 case "seek":
+						 if (msg.from != user)
+							 jump_to(msg.val);
+						 break;
+					 case "select":
+						 load_video(msg.msg);
+						 break;
+					 case "status":
+						 load_status(msg.data);
+						 break;
+				 }
+				 log_msg(msg);
+				 setTimeout(() => remote = false, rwait);
+			 };
+
+			 // video events
+			 video.onpause = (e) => {
+				 if (remote) return false;
+				 socket.send(JSON.stringify({
+					 type: "pause",
+					 val: video.currentTime,
+				 }));
+			 };
+
+			 video.onplay = (e) => {
+				 if (remote || seeking) return false;
+				 socket.send(JSON.stringify({
+					 type: "play",
+					 val: video.currentTime,
+				 }));
+			 };
+
+			 video.onseeking = function(e) {
+				 if (remote) return false;
+				 seeking = true;
+				 socket.send(JSON.stringify({
+					 type: "seek",
+					 val: video.currentTime,
+				 }));
+				 setTimeout(() => seeking = false, rwait);
+			 };
+
+			 // input events
+			 prompt.onkeypress = (e) => {
+				 if (e.key == "Enter" && prompt.value) {
+					 if (!exec_cmd(prompt.value))
 						 socket.send(JSON.stringify({
 							 type: "talk",
 							 msg: prompt.value.trim()
 						 }));
-						 prompt.value = "";
-					 }
+					 prompt.value = "";
 				 }
+			 };
 
-				 ytdl.onkeypress = function(e) {
-					 if (e.key == "Enter" && ytdl.value) {
-						 socket.send(JSON.stringify({
-							 type: "request",
-							 msg: ytdl.value.trim()
-						 }));
-						 ytdl.value = "";
-					 }
+			 ytdl.onkeypress = (e) => {
+				 if (e.key == "Enter" && ytdl.value) {
+					 socket.send(JSON.stringify({
+						 type: "request",
+						 msg: ytdl.value.trim()
+					 }));
+					 ytdl.value = "";
 				 }
+			 };
 
-				 // window events
-				 window.onbeforeunload = function () {
-					 socket.close();
-				 }
+			 // window events
+			 window.onbeforeunload = (e) => socket.close();
 
-				 // setup
-				 socket.onerror = function(err) {
-					 log_msg({
-						 type: "event",
-						 msg: "<b>socket error:</b> <code>" + err + "</code>!"
-					 })
-				 }
+			 // setup
+			 socket.onerror = (err) => log_msg({
+				 type: "event",
+				 msg: "<b>socket error:</b> <code>" + err + "</code>!"
+			 });
 
-				 socket.onclose = function(e) {
-					 log_msg({
-						 type: "event",
-						 msg: "<em>socket" + (e.wasClean ? "" : " abruptly") +
-							  " closed with code " + e.code + "</em>"
-					 })
-				 }
+			 socket.onclose = (e) => log_msg({
+				 type: "event",
+				 msg: "<em>socket" + (e.wasClean ? "" : " abruptly") +
+					  " closed with code " + e.code + "</em>"
+			 });
 
-				 // request data to load
-				 function check() {
-					 socket.send(JSON.stringify({ type: "status" }));
-				 }
+			 // request data to load
 
-				 socket.onopen = function() {
-					 var name = window.location.pathname.substring(1);
-					 log_msg({
-						 type: "event",
-						 msg: "connected to <b>" + name + "</b> as <b>" + user + "</b>!"
-					 })
-					 check();
-					 setInterval(check, 2500);
-				 }
-			 }
+			 socket.onopen = (e) => {
+				 prompt.disabled = ytdl.disabled = false;
+				 prompt.style.background = prompt.style.background = "white";
+
+				 var name = window.location.pathname.substring(1);
+				 var check = () => socket.send(JSON.stringify({ type: "status" }));
+				 log_msg({
+					 type: "event",
+					 msg: "connected to <b>" + name + "</b> as <b>" + user + "</b>!"
+				 })
+				 check();
+				 setInterval(check, scint);
+			 };
 			</script>
 		</body>
 	{{ else }}
@@ -275,9 +311,9 @@
 		<style>
 		 body {
 			 background: black;
+			 font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif;
 			 margin: 20vh auto;
 			 display: table;
-			 font-family: monospace;
 			 color: white;
 			 font-size: 1.5em;
 		 }

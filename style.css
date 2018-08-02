@@ -1,10 +1,20 @@
+/*** general style ***/
+
 body {
 	width: 700px;
 	font-family: sans-serif;
 	margin: 2.5% auto;
 }
 
-form {
+code {
+	font-family: monospace, monospace;
+	display: inline-block;
+	word-break: break-all;
+}
+
+/*** foyer style ***/
+
+body#foyer > form {
 	border: solid;
 	padding: 1em;
 	display: table;
@@ -13,13 +23,13 @@ form {
 	font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif;
 }
 
-form input {
+body#foyer > form input {
 	background: #eda;
 	border-width: 0;
 	padding: 4px;
 }
 
-#help {
+body#foyer > a#help {
 	position: absolute;
 	padding: 6px 12px;
 	bottom: 8px; right: 8px;
@@ -30,53 +40,53 @@ form input {
 	font-weight: bold;
 }
 
-#help:hover {
+body#foyer > a#help:hover {
 	color: #5a9;
 }
 
-code {
-	font-family: monospace, monospace;
-	color: #353;
-	display: inline-block;
-	word-break: break-all;
-}
+/*** parlor style ***/
 
-section {
+main, aside {
 	width: 100%;
-	display: block;
 	background: black;
 }
 
-video {
-	display: block;
-	margin: auto;
-	max-width: calc(100% - 6px);
-	height: 360px;
-	border: solid;
-	border-bottom-width: 0;
+body#parlor,
+body#parlor > main,
+body#parlor > aside > div {
+	border: 2px solid black;
 }
 
-aside > div {
+body#parlor > aside > div {
 	float: left;
-	border: solid;
 	display: block;
-}
-
-div#log {
 	width: calc(50% - 8px);
-	background: #bef;
-	position: relative;
-	padding: 0;
 	display: inline-block;
-	min-height: 275px;
-	max-height: 400px;
-
+	position: relative;
+	height: 300px;
+	padding: 0;
 }
+
+body#parlor > aside > div > ul {
+	overflow-x: hidden;
+	overflow-y: auto;
+	list-style: none;
+	max-height: 350px;
+	padding: 0;
+	margin: 0;
+}
+
+/*** message log ***/
+
+div#log { background: #bef; }
+div#log > ul#msg > li:nth-child(even) { background: #8ad; }
+div#log > ul#msg { margin-bottom: 18px; }
 
 div#log > div#users {
+	font-family: monospace, monospace;
 	border-bottom: 1px solid black;
-	background: #8ad;
 	padding: 2px 0 2px 2px;
+	background: #8ad;
 }
 
 div#log > div#users > span {
@@ -84,22 +94,6 @@ div#log > div#users > span {
 	padding: 2px 4px;
 	margin: 0;
 }
-
-div#log > ul#msg,
-div#other > ul#video-list {
-	overflow-x: hidden;
-	overflow-y: auto;
-	list-style: none;
-	max-height: 350px;
-	margin: 0;
-	padding: 0;
-}
-
-div#log > ul#msg {
-	margin-bottom: 18px;
-}
-
-div#log > ul#msg > li:nth-child(even) { background: #8ad; }
 
 div#log > ul#msg > li.request {
 	font-family: monospace, monospace;
@@ -122,26 +116,18 @@ div#log > input#prompt {
 	border-top: 1px solid black;
 }
 
-div#other {
-	width: calc(50% - 1px);
-	background: #fbe;
-	position: relative;
-	border-left-width: 0;
-	overflow-y: auto;
-	height: 275px;
-}
+/*** video list ***/
 
-div#other > ul#video-list {
-	margin-top: 19px;
-	max-height: 256px;
-}
+div#other { background: #fbe; }
+div#other > ul#video-list > li:nth-child(even) { background: #d8a; }
+div#other > ul#video-list > li:hover { background: #b69; }
+div#other > ul#video-list { margin-top: 18px; }
+
 div#other > ul#video-list > li {
 	cursor: pointer;
 	word-break: break-all;
 	font-family: monospace, monospace;
 }
-div#other > ul#video-list > li:nth-child(even) { background: #d8a; }
-div#other > ul#video-list > li:hover { background: #b69; }
 
 div#other > input#ytdl {
 	top: 0;
@@ -168,9 +154,7 @@ div#other > input#ytdl {
 		border-width: 3px 0 0 0;
 	}
 
-	video {
-		height: auto;
-	}
+	video { height: auto; }
 
 	aside {
 		display: flex;
