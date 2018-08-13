@@ -43,6 +43,7 @@ func createParlor(w http.ResponseWriter, r *http.Request) {
 		Key:    id,
 		lock:   &sync.Mutex{},
 		format: "best",
+		reqs:   make(chan bool, MAX_PROCS),
 	}
 	lock.Unlock()
 

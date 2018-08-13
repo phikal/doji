@@ -95,7 +95,8 @@ func (p *Parlor) statusMonitor() {
 			"users":    p.Users,
 			"paused":   p.Paused,
 			"playing":  p.Watching,
-			"progress": progress,
+			"progress": p.Progress,
+			"download": p.Dlds
 		}
 
 		if user.msg != nil {
