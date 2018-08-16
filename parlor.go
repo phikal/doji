@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -26,24 +27,67 @@ type Parlor struct {
 	Videos   []string         // videos available to be selected
 	Watching string           // video currently being watched
 	Key      string           // parlors key pointing to this Parlor
+	Dlds     []Request        // List of current downloads
 	lock     *sync.Mutex      // lock for .Users map
 	updated  time.Time        // last status update recived
 	notif    chan<- *User     // send a status update to this user
 	format   string           // ytdl-format (-f) to use
+	reqs     chan bool        // request coordinator
 }
 
-func (p *Parlor) processCommands(u *User, fields []string) bool {
+func (p *Parlor) processCommands(u *User, msg string) bool {
+	fields := strings.Fields(msg)
+
 	if len(fields) < 1 {
 		return false
 	}
 
+	hasArg := len(fields) > 1
 	switch fields[0] {
-	case "/update":
-		for _, u := range p.Users {
-			p.notif <- u
+	case "/stats", "/stat":
+		fi, err := ioutil.ReadDir(p.Key)
+		if err != nil {
+			u.msg <- Msg{
+				Type: msgEvent,
+				Msg:  fmt.Sprintf("Failed to read files: %s", err),
+			}
+			break
 		}
+
+		var sum int64
+		for _, f := range fi {
+			sum += f.Size()
+		}
+
+		u.msg <- Msg{
+			Type: msgReqst,
+			Msg:  fmt.Sprintf("all files require %.4gMiB", sum/1024/1024),
+		}
+	case "/delete":
+		if hasArg {
+			for i, f := range p.Videos {
+				if f == fields[1] {
+					err := os.Remove(path.Join(p.Key, f))
+					if err != nil {
+						u.msg <- Msg{
+							Type: msgEvent,
+							Msg:  fmt.Sprintf("Failed to delete %s: %s", f, err),
+						}
+						break
+					}
+
+					p.Videos = append(p.Videos[:i], p.Videos[i+1:]...)
+					for _, u := range p.Users {
+						p.notif <- u
+					}
+				}
+			}
+			p.loadVideos()
+		}
+	case "/update":
+		p.loadVideos()
 	case "/format":
-		if len(fields) > 1 {
+		if hasArg {
 			p.format = fields[1]
 		}
 		u.msg <- Msg{
@@ -70,6 +114,7 @@ func (p *Parlor) loadVideos() {
 		}
 	}
 
+	sort.Strings(p.Videos)
 	for _, u := range p.Users {
 		p.notif <- u
 	}
@@ -85,9 +130,9 @@ func (p *Parlor) statusMonitor() {
 	for {
 		user := <-notif
 
-		progress := p.Progress
 		if !p.Paused {
-			progress += time.Since(p.updated).Seconds()
+			p.Progress += time.Since(p.updated).Seconds()
+			p.updated = time.Now()
 		}
 		p.lock.Lock()
 		msg.Data = map[string]interface{}{

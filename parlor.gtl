@@ -287,7 +287,6 @@
 			 });
 
 			 // request data to load
-
 			 socket.onopen = (e) => {
 				 prompt.disabled = ytdl.disabled = false;
 				 prompt.style.background = prompt.style.background = "white";

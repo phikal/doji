@@ -1,7 +1,6 @@
 package main
 
 import (
-	"strings"
 	"time"
 
 	ws "github.com/gorilla/websocket"
@@ -39,18 +38,20 @@ func (p *Parlor) processConn(conn *ws.Conn, user string) {
 		p.lock.Lock()
 		switch msg.Type {
 		case msgTalk:
-			fields := strings.Fields(msg.Msg)
-			if p.processCommands(u, fields) {
+			if p.processCommands(u, msg.Msg) {
+				p.lock.Unlock()
 				continue
 			}
 		case msgPlay:
 			p.Paused = false
+			p.Progress = msg.Val
 			p.updated = time.Now()
 		case msgPause:
 			p.Paused = true
-			fallthrough
+			p.Progress = msg.Val
 		case msgSeek:
 			p.Progress = msg.Val
+			p.updated = time.Now()
 		case msgSelect:
 			p.Watching = msg.Msg
 			p.Paused = true

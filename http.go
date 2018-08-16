@@ -60,7 +60,6 @@ func createParlor(w http.ResponseWriter, r *http.Request) {
 	})
 
 	http.Redirect(w, r, "./"+id, http.StatusFound)
-
 }
 
 func connect(name string, w http.ResponseWriter, r *http.Request) {
@@ -96,8 +95,17 @@ func parlor(w http.ResponseWriter, r *http.Request) {
 		if len(m) == 2 {
 			if strings.HasSuffix(r.URL.Path, "/socket") {
 				connect(m[1], w, r)
-			} else if err := tmpl.ExecuteTemplate(w, "parlor", parlors[m[1]]); err != nil {
-				log.Fatal(err)
+			} else {
+				p, ok := parlors[m[1]]
+
+				if ok && !p.Paused {
+					p.Progress += time.Since(p.updated).Seconds()
+					p.updated = time.Now()
+				}
+
+				if err := tmpl.ExecuteTemplate(w, "parlor", p); err != nil {
+					log.Fatal(err)
+				}
 			}
 		}
 	}
