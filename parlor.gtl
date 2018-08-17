@@ -168,9 +168,9 @@
 					 case "seek":
 						 var s = msg.val;
 						 if (!s || s < 1) break;
-						 var hour = ~~(s / (60 * 60)) ,
-							 min = ("0" + ~~((s % (60 * 60)) / 60)).slice(-2),
-							 sec = ("0" + (s % 60)).slice(-2);
+						 var hour = ~~(s / 3600)),
+							 min  = ("0" + ~~(s / 60).slice(-2),
+							 sec  = ("0" + (s % 60)).slice(-2);
 						 l.innerHTML = "<b>" + msg.from + "</b> moved to " +
 												(hour == 0 ? "" : hour + ":") +
 									   min + ":" + sec;
