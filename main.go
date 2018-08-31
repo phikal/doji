@@ -61,6 +61,18 @@ func main() {
 	}
 	ioutil.WriteFile(path.Join(pwd, "index.html"), []byte("nothing to see"), 0644)
 
+	if os.Getenv("DEBUG") == "" {
+		l, err := os.Create(path.Join(pwd, "doji.log"))
+		if err != nil {
+			log.Println(err)
+		} else if os.Getenv("DEBUG") == "" {
+			log.SetOutput(l)
+			defer l.Close()
+		}
+	} else {
+		log.Panicln("Found DEBUG envar...")
+	}
+
 	// process signals
 	schan := make(chan os.Signal)
 	signal.Notify(schan, os.Interrupt, os.Kill)
