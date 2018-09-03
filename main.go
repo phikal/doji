@@ -77,6 +77,8 @@ func main() {
 	schan := make(chan os.Signal)
 	signal.Notify(schan, os.Interrupt, os.Kill)
 	go sigHandler(schan, pwd)
+	// setup data
+	go loadSets()
 
 	// configure HTTP
 	http.Handle("/d/", http.StripPrefix("/d/", http.FileServer(http.Dir(pwd))))
