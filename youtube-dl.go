@@ -25,7 +25,7 @@ func init() {
 }
 
 // use youtube-dl to download a video
-func (p *Parlor) getVideo(url string) {
+func (p *Room) getVideo(url string) {
 	wall := func(msg string) {
 		for _, c := range p.Users {
 			c.msg <- Msg{
@@ -35,14 +35,14 @@ func (p *Parlor) getVideo(url string) {
 		}
 	}
 
-	if len(p.Dlds) >= MAX_PROCS {
-		<-p.reqs
-	}
+	<-p.reqs
 
 	r := Request{Url: url}
-	p.lock.Lock()
-	p.Dlds = append(p.Dlds, r)
-	p.lock.Unlock()
+	p.Lock()
+	p.Requests = append(p.Requests, &r)
+	p.Unlock()
+
+	log.Printf("Downloading %s as %s", url, p.format)
 
 	r.cmd = exec.Command("youtube-dl", []string{
 		"--verbose",
@@ -68,15 +68,17 @@ func (p *Parlor) getVideo(url string) {
 
 	for out.Scan() {
 		var perc float64
-		fmt.Sscanf(out.Text(), "[download]  %f%%", &perc)
+
+		_, err := fmt.Sscanf(out.Text(), "[download]  %f%%", &perc)
+		if err != nil {
+			continue
+		}
 
 		if r.Progress == 0 && perc == 100 {
 			continue
 		}
 
-		if perc > r.Progress+10 {
-			r.Progress = perc
-		}
+		r.Progress = perc / 100
 
 		for _, u := range p.Users {
 			p.notif <- u
@@ -88,13 +90,15 @@ func (p *Parlor) getVideo(url string) {
 		return
 	}
 
-	p.lock.Lock()
-	for i, R := range p.Dlds {
-		if R == r {
-			p.Dlds = append(p.Dlds[:i], p.Dlds[i+1:]...)
+	p.Lock()
+	for i, R := range p.Requests {
+		if &r == R {
+			p.Requests = append(p.Requests[:i], p.Requests[i+1:]...)
 			break
 		}
 	}
-	p.lock.Unlock()
+	p.Unlock()
+
+	p.loadVideos()
 	p.reqs <- true
 }

@@ -1,17 +1,18 @@
 package main
 
-//go:generate go-bindata -o templ.go style.css foyer.gtl parlor.gtl
+//go:generate go-bindata -o templ.go room.gtl
 
 import (
 	"html/template"
 	"io/ioutil"
 	"log"
 	"math/rand"
-	"mime"
 	"net/http"
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
+	"syscall"
 	"time"
 )
 
@@ -32,34 +33,39 @@ const (
 	msgReady  = "ready"
 )
 
-var style []byte
-
 func main() {
 	// set PRNG seed
-	rand.Seed(time.Now().UTC().UnixNano())
+	rand.Seed(time.Now().UnixNano())
 
-	if asset, err := Asset("parlor.gtl"); err != nil {
+	if asset, err := Asset("room.gtl"); err != nil {
 		log.Fatalln(err)
 	} else {
-		tmpl = template.Must(tmpl.New("parlor").Parse(string(asset)))
+		tmpl = template.Must(template.New("room").
+			Funcs(template.FuncMap{"rndname": rndName}).
+			Parse(string(asset)))
 	}
 
-	if asset, err := Asset("foyer.gtl"); err != nil {
-		log.Fatalln(err)
-	} else {
-		tmpl = template.Must(tmpl.New("foyer").Parse(string(asset)))
+	// setup sets
+	var err error
+	setDir := os.Getenv("SETDIR")
+	if setDir == "" {
+		setDir, err = os.Getwd()
+		if err != nil {
+			log.Panicln(err)
+		}
 	}
-
-	if asset, err := Asset("style.css"); err != nil {
+	setDir, err = filepath.Abs(setDir)
+	if err != nil {
 		log.Fatalln(err)
-	} else {
-		style = asset
+	}
+	if err := loadSets(setDir); err != nil {
+		log.Fatalln(err)
 	}
 
 	// create directory structure
 	pwd, err := ioutil.TempDir("", "doji-")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln(err)
 	}
 	if err = os.Chdir(pwd); err != nil {
 		log.Fatalln(err)
@@ -74,37 +80,40 @@ func main() {
 			log.SetOutput(l)
 			defer l.Close()
 		}
-	} else {
-		log.Panicln("Found DEBUG envar...")
 	}
 
 	// process signals
-	schan := make(chan os.Signal)
-	signal.Notify(schan, os.Interrupt, os.Kill)
-	go sigHandler(schan, pwd)
-	// setup data
-	go loadSets()
+	sig := make(chan os.Signal)
+	signal.Notify(sig, os.Interrupt, os.Kill, syscall.SIGUSR1)
+	go func() {
+		for {
+			s := <-sig
+			if s == syscall.SIGUSR1 {
+				if err := loadSets(setDir); err != nil {
+					log.Fatalln(err)
+				}
+			} else {
+				break
+			}
+		}
+
+		err := os.RemoveAll(pwd)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		os.Exit(0)
+	}()
 
 	// configure HTTP
 	http.Handle("/d/", http.StripPrefix("/d/", http.FileServer(http.Dir(pwd))))
-	http.HandleFunc("/style.css", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", mime.TypeByExtension(".css")+"; charset=utf-8")
-		if _, err := w.Write(style); err != nil {
-			log.Fatalln(err)
-		}
-	})
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" || r.Method == http.MethodPost {
-			parlor(w, r)
-		} else if err := tmpl.ExecuteTemplate(w, "foyer", nil); err != nil {
-			log.Fatal(err)
-		}
-	})
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {})
+	http.HandleFunc("/", room)
 
 	// start HTTP Server
 	listen := os.Getenv("LISTEN")
 	if listen == "" {
-		listen = ":8080"
+		listen = "localhost:8080"
 	}
+	log.Println("Listening on", listen)
 	log.Fatal(http.ListenAndServe(listen, nil))
 }

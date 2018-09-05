@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"time"
 
 	ws "github.com/gorilla/websocket"
@@ -17,29 +18,33 @@ type Msg struct {
 
 // continuously listen on a connection and process incoming messages, as
 // well as start a goroutine to coordinate outgoing messages
-func (p *Parlor) processConn(conn *ws.Conn, user string) {
-	u := &User{conn: conn}
+func (p *Room) processConn(conn *ws.Conn, user string) {
+	u := &User{
+		conn: conn,
+		key:  user,
+	}
 
-	p.lock.Lock()
+	p.Lock()
 	p.Users[user] = u
-	p.lock.Unlock()
+	p.Unlock()
 
 	go u.talker()
 	defer p.cleanUp(u)
 
-	var msg Msg
 	for {
+		var msg Msg
 		err := conn.ReadJSON(&msg)
 		if err != nil {
 			return
 		}
+		log.Printf("Received message %v from %q in %q", msg, user, p.Key)
 
 		// interpret message
-		p.lock.Lock()
+		p.Lock()
 		switch msg.Type {
 		case msgTalk:
 			if p.processCommands(u, msg.Msg) {
-				p.lock.Unlock()
+				p.Unlock()
 				continue
 			}
 		case msgPlay:
@@ -51,13 +56,12 @@ func (p *Parlor) processConn(conn *ws.Conn, user string) {
 			p.Progress = msg.Val
 		case msgSeek:
 			p.Progress = msg.Val
+			p.Paused = true
 			p.updated = time.Now()
 		case msgSelect:
 			p.Watching = msg.Msg
 			p.Paused = true
 			p.Progress = 0
-		case msgReqst:
-			go p.getVideo(msg.Msg)
 		case msgLoad:
 			if _, ok := sets[msg.Msg]; ok {
 				go func(set string) {
@@ -121,7 +125,7 @@ func (p *Parlor) processConn(conn *ws.Conn, user string) {
 				}
 			}
 		}
-		p.lock.Unlock()
+		p.Unlock()
 
 		// re-process message
 		switch msg.Type {

@@ -3,12 +3,11 @@ package main
 import (
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
-	"sync"
-	"time"
 
 	ws "github.com/gorilla/websocket"
 )
@@ -26,49 +25,42 @@ var (
 		},
 	}
 
-	// path regular expression
-	pathRe = regexp.MustCompile("^/([" + vouls + consonants + "]+)")
+	// regular expression for paths matching room URLs
+	roomRe = regexp.MustCompile("^[a-z]{2,}")
 )
 
-func createParlor(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+func create(room string) *Room {
+	var R *Room
+	var ok bool
+
+	if R, ok = rooms[room]; !ok {
+		R = &Room{
+			Users:  make(map[string]*User),
+			Sets:   make(map[string]int),
+			Key:    room,
+			format: "best",
+			reqs:   make(chan bool, MAX_PROCS),
+		}
+
+		for i := 0; i < MAX_PROCS; i++ {
+			R.reqs <- true
+		}
+
+		if err := os.Mkdir(room, os.ModeDir|0755); err != nil && !os.IsExist(err) {
+			log.Fatalln(err)
+		}
+
+		lock.Lock()
+		rooms[room] = R
+		lock.Unlock()
+
+		go R.statusMonitor()
 	}
 
-	id := rndName()
-	lock.Lock()
-	parlors[id] = &Parlor{
-		Users:  make(map[string]*User),
-		Key:    id,
-		lock:   &sync.Mutex{},
-		format: "best",
-		reqs:   make(chan bool, MAX_PROCS),
-	}
-	lock.Unlock()
-
-	if err := os.Mkdir(id, os.ModeDir|0755); err != nil {
-		log.Fatalln(err)
-	}
-
-	go parlors[id].statusMonitor()
-
-	http.SetCookie(w, &http.Cookie{
-		Name:    "user",
-		Value:   r.PostFormValue("name"),
-		Expires: time.Now().Add(time.Hour * 24 * 7),
-	})
-
-	http.Redirect(w, r, "./"+id, http.StatusFound)
+	return R
 }
 
-func connect(name string, w http.ResponseWriter, r *http.Request) {
-	p, ok := parlors[name]
-	if !ok {
-		http.Error(w, "no such parlor", http.StatusBadRequest)
-		return
-	}
-
+func connect(w http.ResponseWriter, r *http.Request, room *Room) {
 	cookie, err := r.Cookie("user")
 	if err != nil {
 		http.Error(w, "no username passed", http.StatusBadRequest)
@@ -82,31 +74,30 @@ func connect(name string, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p.processConn(conn, user)
+	room.processConn(conn, user)
 }
 
-// http handler for creating parlors and websockets
-func parlor(w http.ResponseWriter, r *http.Request) {
-	// create or join existing parlor
-	if r.Method == http.MethodPost {
-		createParlor(w, r)
-	} else {
-		m := pathRe.FindStringSubmatch(r.URL.Path)
-		if len(m) == 2 {
-			if strings.HasSuffix(r.URL.Path, "/socket") {
-				connect(m[1], w, r)
-			} else {
-				p, ok := parlors[m[1]]
-
-				if ok && !p.Paused {
-					p.Progress += time.Since(p.updated).Seconds()
-					p.updated = time.Now()
-				}
-
-				if err := tmpl.ExecuteTemplate(w, "parlor", p); err != nil {
-					log.Fatal(err)
-				}
-			}
+// http handler for creating rooms and websockets
+func room(w http.ResponseWriter, r *http.Request) {
+	room := strings.TrimPrefix(r.URL.Path, "/")
+	switch {
+	case r.URL.Path == "/":
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := tmpl.ExecuteTemplate(w, "room", nil); err != nil {
+			log.Fatal(err)
+		}
+	case strings.HasSuffix(r.URL.Path, "/socket"):
+		room = strings.TrimSuffix(room, "/socket")
+		if p, ok := rooms[room]; !ok {
+			http.Error(w, "no such room", http.StatusBadRequest)
+		} else {
+			connect(w, r, p)
+		}
+	case roomRe.MatchString(room):
+		log.Printf("%q joined room %q", "user", room)
+		p := create(room)
+		if err := tmpl.ExecuteTemplate(w, "room", p); err != nil {
+			log.Fatal(err)
 		}
 	}
 }
