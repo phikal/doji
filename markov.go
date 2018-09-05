@@ -1,9 +1,6 @@
 package main
 
-import (
-	"math/rand"
-	"regexp"
-)
+import "math/rand"
 
 var (
 	chars  []byte
@@ -68,15 +65,13 @@ func init() {
 	for c, _ := range markov {
 		chars = append(chars, c)
 	}
-
-	roomRe = regexp.MustCompile("^[" + string(chars) + "]{4,6}")
 }
 
 // generate a random string
 func rndName() string {
 	for {
 		var (
-			n    = int(rand.Int63n(2) + 4)
+			n    = int(rand.Int63n(3) + 3)
 			c    = chars[rand.Intn(len(chars))]
 			name = make([]byte, 1, n)
 			p0   float64
