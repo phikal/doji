@@ -25,6 +25,11 @@ const (
 	msgStatus = "status"
 	msgReqst  = "request"
 	msgEvent  = "event"
+	msgLoad   = "load"
+	msgPop    = "pop"
+	msgPush   = "push"
+	msgNext   = "next"
+	msgReady  = "ready"
 )
 
 var style []byte
