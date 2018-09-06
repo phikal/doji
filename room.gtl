@@ -78,7 +78,7 @@
 		 }
 		 #reqs > canvas {
 			 width: 100%;
-			 height: 17px;
+			 height: 18px;
 			 border-bottom: 1px solid #da8;
 		 }
 
@@ -494,9 +494,8 @@
 		 choose_menu(getCookie("tab") || "videos");
 
          function jump_to(sec) {
-             if (sec === undefined)
+             if (sec === undefined || sec < 0)
                  return;
-			 video.pause();
 
 			 if (remote) {
 				 setTimeout(_ => jump_to(sec), 100);
@@ -504,10 +503,16 @@
 			 }
 
              function jump() {
-                 /* if (Math.abs(sec - video.currentTime) > moffset)*/
-                 video.currentTime = sec;
-                 /* if (video.readystate > 2)
-				  *     video.play();*/
+                 if (Math.abs(sec - video.currentTime) > moffset)
+					 video.currentTime = sec;
+
+				 /* if (video.readystate > 2) {
+					if (video.playing)
+					video.play();
+					else
+					video.pause();
+					}*/
+
 				 remote = false;
              }
              function check() {
@@ -518,7 +523,6 @@
 					 } else setTimeout(check, bufwait);
                  }
              }
-             video.pause();
              check();
          }
 
@@ -529,12 +533,11 @@
 			 var ovid = vid;
              vid = "./d" + window.location.pathname + "/" + vid;
              if (vid != "." + parser.pathname) { // TODO: make cleverer
-				 video.pause();
                  video.src = vid;
                  video.load();
-                 video.pause();
                  video.currentTime = 0;
 				 getElementById("title").innerText = ovid;
+				 video.pause();
 				 remote = false;
              }
          }
@@ -626,14 +629,11 @@
 
 		 	 if (data.reqs) {
 				 while(reqs.firstChild)
-					 reqes.removeChild(reqs.firstChild);
+					 reqs.removeChild(reqs.firstChild);
 				 data.reqs.map(r => {
 			 		 console.log(r);
 
 					 var canvas = document.createElement("canvas");
-					 canvas.height = "18";
-					 canvas.width = "396";
-
 					 var ctx = canvas.getContext("2d");
 					 ctx.fillStyle = "#da8";
 					 ctx.fillRect(0, 0, canvas.width  * r.progress, canvas.height);
@@ -649,10 +649,18 @@
 				 });
 			 }
 
-             load_video(data.playing);
-             if (data.paused) {
-				 video.pause();
+			 if (!remote) {
+				 remote = true;
+
+				 load_video(data.playing);
 				 jump_to(data.progress);
+
+				 console.log(video.paused, data.paused);
+				 if (video.paused && !data.paused)
+					 video.play();
+				 else if (!video.paused && data.paused)
+					 video.pause();
+				 remote = false;
 			 }
          }
 
@@ -761,7 +769,6 @@
 		 }
 
 		 addconf("Queue?", "checkbox");
-		 addconf("Autoplay?", "checkbox");
 
 		 // events
          socket.onmessage = e => {
@@ -770,22 +777,27 @@
              var timestamp = new Date().toLocaleTimeString();
              switch(msg.type) {
                  case "pause":
-                     if (msg.zfrom != user)
-                         video.pause();
+                     if (msg.from != user) {
+						 video.pause();
+						 jump_to(msg.val);
+					 }
 					 if (msg.msg)
-						 log_msg("Paused for " + msg.msg)
+						 log_msg("Paused for " + msg.msg);
+
                      break;
                  case "play":
-                     if (msg.from != user && video.paused)
-                         video.play();
+                     if (msg.from != user && video.paused) {
+						 video.play();
+						 jump_to(msg.val);
+					 }
                      break;
                  case "seek":
-					 console.log(msg, lastmsg);
 					 if (lastmsg.type == "seek" || msg.from == user)
 						 break;
-                     jump_to(msg.val);
+					 jump_to(msg.val);
                      break;
                  case "select":
+					 video.pause();
                      load_video(msg.msg);
                      break;
 				 case "load":
@@ -799,10 +811,6 @@
 					 break;
 				 case "status":
 					 load_status(msg.data);
-					 break;
-				 case "ready":
-					 if (conf.autoplay)
-						 video.play();
 					 break;
 			 }
 			 if (msg)
