@@ -811,38 +811,6 @@
 			 setTimeout(_ => remote = false, rwait);
          };
 
-         // video events
-         video.onpause = e => {
-             if (remote) return true;
-             send({
-                 type: "pause",
-                 val: video.currentTime,
-             });
-         };
-         video.onplay = e => {
-             if (remote || seeking) return true;
-             send({
-                 type: "play",
-                 val: video.currentTime,
-             });
-         };
-         video.onseeking = e => {
-             if (remote) return true;
-             seeking = true;
-             send({
-                 type: "seek",
-                 val: video.currentTime,
-             });
-             setTimeout(_ => seeking = false, rwait);
-         };
-		 video.onended = _ => {
-			 remote = true;
-			 video.src = "";
-			 send({ type: "next" })
-		 };
-		 video.oncanplay = _ => send({ type: "ready" });
-		 video.onstalled = _ => send({ type: "pause", msg: user })
-
          // input events
          prompt.onkeypress = e => {
 			 if (e.key == "Enter" && prompt.value) {
@@ -880,6 +848,45 @@
              })
              check();
              setInterval(check, scint);
+
+
+			 // video events
+			 video.onpause = e => {
+				 if (remote || video.ended)
+					 return true;
+				 send({
+					 type: "pause",
+					 val: video.currentTime,
+				 });
+			 };
+			 video.onplay = e => {
+				 if (remote || seeking)
+					 return true;
+				 send({
+					 type: "play",
+					 val: video.currentTime,
+				 });
+			 };
+			 video.onseeking = e => {
+				 if (remote)
+					 return true;
+				 seeking = true;
+				 send({
+					 type: "seek",
+					 val: video.currentTime,
+				 });
+				 setTimeout(_ => seeking = false, bufwait);
+			 };
+			 video.onended = _ => {
+				 remote = true;
+				 video.src = "";
+				 setTimeout(_ => send({ type: "next" }), 2000);
+			 };
+			 video.oncanplay = _ => {
+				 if (video.paused) send({ type: "ready" });
+			 };
+			 video.onstalled = _ => send({ type: "pause", msg: user })
+
          };
         </script>
     {{ else }}
