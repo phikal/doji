@@ -562,7 +562,7 @@
                      break;
 				 case "search":
 					 sfilter = arg || new RegExp(arg, "i");
-					 send({ type: "status" })
+					 send("status");
 					 break;
              }
              return true;
@@ -577,8 +577,7 @@
                  data.vids.map(v => {
                      var vid = document.createElement("li");
                      vid.appendChild(document.createTextNode(v));
-                     vid.onclick = _ => send({
-                         type: conf.queue ? "push" : "select",
+                     vid.onclick = _ => send(conf.queue ? "push" : "select", {
                          msg: v
                      });
                      videos.appendChild(vid);
@@ -590,10 +589,7 @@
 				 data.queue.map((d, i) => {
 					 var que = document.createElement("li");
                      que.appendChild(document.createTextNode(d));
-                     que.onclick = _ => send({
-						 type: "pop",
-						 val: i,
-					 });
+                     que.onclick = _ => send("pop", { val: i });
                      queue.appendChild(que);
 				 })
 			 }
@@ -609,10 +605,7 @@
                      vid.appendChild(document.createTextNode(s));
 					 if (s in data.lsets)
 						 vid.classList.add("loaded");
-                     vid.onclick = _ => send({
-						 type: "load",
-						 msg: s
-					 });
+                     vid.onclick = _ => send("load", { msg: s });
                      sets.appendChild(vid);
                  });
 			 }
@@ -720,7 +713,12 @@
          const socket = new WebSocket(location.href.replace(/http/, "ws") +
                                       "/socket");
 
-		 function send(msg) {
+		 function send(type, msg) {
+			 if (conf.unhook)
+				 return;
+
+			 msg = msg || {};
+			 msg.type = type;
 			 if (socket.readyState < 1)
 				 setTimeout(0.1, _ => send(msg));
 			 else
@@ -769,9 +767,13 @@
 		 }
 
 		 addconf("Queue?", "checkbox");
+		 addconf("Unhook", "checkbox");
 
 		 // events
          socket.onmessage = e => {
+			 if (conf.unhook)
+				 return true;
+
              remote = true;
              var msg = JSON.parse(e.data);
              var timestamp = new Date().toLocaleTimeString();
@@ -823,10 +825,7 @@
          prompt.onkeypress = e => {
 			 if (e.key == "Enter" && prompt.value) {
                  if (!exec_cmd(prompt.value))
-                     send({
-                         type: "talk",
-                         msg: prompt.value.trim()
-                     });
+                     send("talk", { msg: prompt.value.trim() });
                  prompt.value = "";
              }
          };
@@ -849,7 +848,7 @@
          socket.onopen = e => {
              prompt.disabled = false;
              var name = window.location.pathname.substring(1);
-             var check = _ => send({ type: "status" });
+             var check = _ => send("status");
              log_msg({
                  type: "event",
                  msg: "connected to <b>" + name + "</b> as <b>" + user + "</b>!"
@@ -860,40 +859,32 @@
 
 			 // video events
 			 video.onpause = e => {
-				 if (remote || video.ended)
+				 if (remote || video.ended || conf.unhook)
 					 return true;
-				 send({
-					 type: "pause",
-					 val: video.currentTime,
-				 });
+				 send("pause", { val: video.currentTime });
 			 };
 			 video.onplay = e => {
-				 if (remote || seeking)
+				 if (remote)
 					 return true;
-				 send({
-					 type: "play",
-					 val: video.currentTime,
-				 });
+				 send("play", { val: video.currentTime });
 			 };
 			 video.onseeking = e => {
 				 if (remote)
 					 return true;
 				 seeking = true;
-				 send({
-					 type: "seek",
-					 val: video.currentTime,
-				 });
+				 send("seek", { val: video.currentTime });
 				 setTimeout(_ => seeking = false, bufwait);
 			 };
 			 video.onended = _ => {
 				 remote = true;
 				 video.src = "";
-				 setTimeout(_ => send({ type: "next" }), 2000);
+				 setTimeout(_ => send("next"), 2000);
 			 };
 			 video.oncanplay = _ => {
-				 if (video.paused) send({ type: "ready" });
+				 if (video.paused || !conf.unhook)
+					 send("ready");
 			 };
-			 video.onstalled = _ => send({ type: "pause", msg: user })
+			 video.onstalled = _ => send("pause", { msg: user })
 
          };
         </script>
