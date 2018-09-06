@@ -123,7 +123,7 @@
 		 .text h3 { font-size: 105%; }
 		 .text h4 { font-size: 100%; }
 		 .text hr { margin-bottom: 1em; border-style: dashed; }
-		 .text p { margin-top: 8px; text-align: justify; }
+		 .text p, .text li, .text dd { margin-top: 8px; text-align: justify; }
 		 .text a { color: #039; }
 		 .text code {
 			 background: rgba(50,200,50,0.1);
@@ -377,13 +377,22 @@
 						<dd>Force-refresh the list of all videos in the
 							current room for all users.</dd>
 
-						<dt><code>/format</code>, <code>/f</code></dt>
+						<dt><code>/format [arg]</code>, <code>/f</code></dt>
 						<dd>Automatically skip to the next video in the
 							queue, without waiting to finish the current one.</dd>
+
+						<dt><code>/next</code>, <code>/n</code></dt>
+						<dd>Skip the current video in the queue, and
+						    start playing the next one.</dd>
+
+						<dt><code>/volume [arg]</code> (local)</dt>
+						<dd>Set the volume of the video player. <code>0</code>
+							mutes the steam, <code>1</code> is the loudest.</dd>
+
+						<dt><code>/search [arg]</code> (local)</dt>
+						<dd>Only display all the sets that match
+							<code>[arg]</code> as a regular expression.</dd>
 					</dl>
-					<center>
-						<em>to be finished...</em>
-					</center>
 				</div>
 				<div id="info" class="text">
 					<h1>doji, v2</h1>

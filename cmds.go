@@ -90,7 +90,7 @@ func (p *Room) processCommands(u *User, msg string) bool {
 		p.loadVideos()
 	case "u", "update":
 		p.loadVideos()
-	case "next":
+	case "next", "n":
 		for _, u := range p.Users {
 			u.msg <- Msg{Type: msgPlay}
 		}
@@ -99,20 +99,6 @@ func (p *Room) processCommands(u *User, msg string) bool {
 			p.format = arg
 		}
 		rq("Set format to %q", p.format)
-	case "pop":
-		if len(p.Queue) == 0 {
-			rq("Nothing to pop")
-			break
-		}
-
-		rq("Popped %q", p.Queue[0])
-		p.Queue = p.Queue[1:]
-	case "set":
-		if arg != "" {
-			break
-		}
-
-		p.toggleSet(arg)
 	default:
 		rq("No such command %q", parts[0])
 	}
