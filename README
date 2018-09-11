@@ -1,0 +1,76 @@
+doji ([jap.][doji], "どうじ", _the same event_) is a video synchronizing
+utility, allowing it's users to watch the same video at the same time,
+desipte not being in the same place.
+
+# Technical Info
+
+Instead of directly connecting the user to thrid-party sites, doji uses
+[youtube-dl][yt-dl] to first download the
+video onto the server, then host it directly to it's users.
+
+Besides protecting the user from potentially dangerous actors,
+youtube-dl provides a wide range of [supported sites][yt-dl-sites],
+which are all also accesible to doji users. No third-party vendor is
+needed to run doji.
+
+## Building
+
+To build doji, the [Go][golang] toolchain has to be installed on ones
+device, as well as [go-bindata][bindata]. Then running
+
+	go generate
+	go build
+
+should suffice to have a functioning `doji` binary.
+
+## Running
+
+By default, executing `doji` can be done anywhere, since all
+dependencies and assets are statically compiled into the binary.
+
+The following environmental variables influence doji's behavior:
+
+- `LISTEN`: how to listen for HTTP requests (default: `localhost:8080`,
+  alternatives: `:80`, `192.168.100:400`)
+- `SETDIR`: where to look for sets (see _Sets_) (default: nothing)
+- `DEBUG`: if any value prevent log from being sent to a
+  `/tmp/doji/doji.log.gz` and instead print directly to stdout.
+
+## Sets
+
+If `SETDIR` is to be used, it has to point to a directory, containing
+further directories, which in turn contain video files. For example:
+
+	./sets/
+	./sets/linear-algebra/
+	./sets/linear-algebra/001-vectors.webm
+	./sets/linear-algebra/002-linear-combin.webm
+	./sets/linear-algebra/003-linear-transf.webm
+	./sets/linear-algebra/004-matrix.webm
+	./sets/linear-algebra/005-three-dimension.webm
+	./sets/cosmos/
+	./sets/cosmos/the-shores-of-the-cosmic-ocean.mp4
+	./sets/cosmos/one-voice-in-the-cosmic-fugue.mp4
+	./sets/cosmos/harmony-of-the-worlds.mp4
+	./sets/cosmos/heaven-and-hell.mp4
+	./sets/cosmos/blues-for-a-red-planet.mp4
+
+When users in a room load a set, each file in, for example
+`linear-algebra` will be symbolically linked into the rooms directory
+(meaning that sets can be stored on a separate partition).
+
+# Legal
+
+The source code is public and has been places into the public domain,
+using the same license as <code>youtube-dl</code>. It can be found
+[here][source] and is mirrored on [GitHub][github]. Issues and
+suggestions can be reported on GitHub or by sending an Email:
+<philip@warpmail.net>.
+
+[doji]: https://en.wiktionary.org/wiki/%E3%81%A9%E3%81%86%E3%81%98
+[yt-dl]: https://rg3.github.io/youtube-dl/
+[yt-dl-sites]: https://rg3.github.io/youtube-dl/supportedsites.html
+[golang]: https://golang.org/
+[source]: https://zge.us.to/git/doji/
+[github]: https://github.com/phikal/doji
+[bindata]: https://github.com/jteeuwen/go-bindata
