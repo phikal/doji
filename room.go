@@ -16,7 +16,7 @@ var (
 	lock  = &sync.RWMutex{}
 )
 
-// a room stores the current state of the room, as well as the users (in
+// Room stores the current state of the room, as well as the users (in
 // a map) and further internal data
 type Room struct {
 	sync.RWMutex // lock for .Users map
@@ -34,7 +34,8 @@ type Room struct {
 	format   string           // ytdl-format (-f) to use
 	notif    chan<- *User     // send a status update to this user
 	reqs     chan bool        // request coordinator
-	updated  time.Time        // last status update recived
+	updated  time.Time        // last status update received
+}
 func (p *Room) notifyAll() {
 	for _, u := range p.Users {
 		p.notif <- u

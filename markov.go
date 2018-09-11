@@ -62,7 +62,7 @@ var (
 
 func init() {
 	chars = make([]byte, 0, len(markov))
-	for c, _ := range markov {
+	for c := range markov {
 		chars = append(chars, c)
 	}
 }
