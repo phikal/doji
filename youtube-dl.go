@@ -20,7 +20,7 @@ type Request struct {
 // check for youtube-dl
 func init() {
 	if _, err := exec.LookPath("youtube-dl"); err != nil {
-		log.Fatalln(os.Stderr, "failed to find youtube-dl in PATH")
+		log.Fatalln("failed to find youtube-dl in PATH")
 	}
 }
 
