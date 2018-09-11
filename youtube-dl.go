@@ -80,9 +80,7 @@ func (p *Room) getVideo(url string) {
 
 		r.Progress = perc / 100
 
-		for _, u := range p.Users {
-			p.notif <- u
-		}
+		p.notifyAll()
 	}
 
 	if err = r.cmd.Wait(); err != nil {

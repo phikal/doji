@@ -81,9 +81,7 @@ func (p *Room) processCommands(u *User, msg string) bool {
 				}
 
 				p.Videos = append(p.Videos[:i], p.Videos[i+1:]...)
-				for _, u := range p.Users {
-					p.notif <- u
-				}
+				p.notifyAll()
 			}
 		}
 
@@ -91,6 +89,8 @@ func (p *Room) processCommands(u *User, msg string) bool {
 	case "u", "update":
 		p.loadVideos()
 	case "next", "n":
+		p.notifyAll()
+
 		for _, u := range p.Users {
 			u.msg <- Msg{Type: msgPlay}
 		}

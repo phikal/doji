@@ -35,6 +35,10 @@ type Room struct {
 	notif    chan<- *User     // send a status update to this user
 	reqs     chan bool        // request coordinator
 	updated  time.Time        // last status update recived
+func (p *Room) notifyAll() {
+	for _, u := range p.Users {
+		p.notif <- u
+	}
 }
 
 // check for new videos in the room's directory
@@ -54,9 +58,7 @@ func (p *Room) loadVideos() {
 	}
 
 	sort.Strings(p.Videos)
-	for _, u := range p.Users {
-		p.notif <- u
-	}
+	p.notifyAll()
 }
 
 // wait for requests to send users the current status

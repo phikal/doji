@@ -138,14 +138,10 @@ func (p *Room) processConn(conn *ws.Conn, user string) {
 			log.Printf("Sent message %v to %q", msg, p.Key)
 		case msgPop, msgPush:
 			msg.From = user
-			for _, u := range p.Users {
-				u.msg <- msg
-			}
+			p.notifyAll()
 			fallthrough
 		case msgStatus:
-			for _, u := range p.Users {
-				p.notif <- u
-			}
+			p.notifyAll()
 		}
 	}
 }
