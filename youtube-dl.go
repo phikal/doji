@@ -4,18 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"path"
 )
-
-const MAX_PROCS = 5
-
-type Request struct {
-	Url      string  `json:"url"`
-	Progress float64 `json:"progress"`
-	cmd      *exec.Cmd
-}
 
 // check for youtube-dl
 func init() {
@@ -35,11 +26,9 @@ func (p *Room) getVideo(url string) {
 		}
 	}
 
-	<-p.reqs
-
-	r := Request{Url: url}
+	r := Video{Url: url}
 	p.Lock()
-	p.Requests = append(p.Requests, &r)
+	*p.Sets[""] = append(*p.Sets[""], &r)
 	p.Unlock()
 
 	log.Printf("Downloading %s as %s", url, p.format)
@@ -67,9 +56,13 @@ func (p *Room) getVideo(url string) {
 	}
 
 	for out.Scan() {
-		var perc float64
+		_, err := fmt.Sscanf(out.Text(), "[download] Destination: %c", &r.Name)
+		if err != nil {
+			continue
+		}
 
-		_, err := fmt.Sscanf(out.Text(), "[download]  %f%%", &perc)
+		var perc float64
+		_, err = fmt.Sscanf(out.Text(), "[download]  %f%%", &perc)
 		if err != nil {
 			continue
 		}
@@ -88,15 +81,5 @@ func (p *Room) getVideo(url string) {
 		return
 	}
 
-	p.Lock()
-	for i, R := range p.Requests {
-		if &r == R {
-			p.Requests = append(p.Requests[:i], p.Requests[i+1:]...)
-			break
-		}
-	}
-	p.Unlock()
-
-	p.loadVideos()
-	p.reqs <- true
+	r.Ready = true
 }

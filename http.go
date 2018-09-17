@@ -5,7 +5,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 
@@ -26,38 +25,23 @@ var (
 	}
 
 	// regular expression for paths matching room URLs
-	roomRe = regexp.MustCompile("^[a-z]{2,}")
+	roomRe = regexp.MustCompile(`^[a-z.]{2,}`)
 )
 
-func create(room string) *Room {
-	var R *Room
-	var ok bool
-
-	if R, ok = rooms[room]; !ok {
-		R = &Room{
-			Users:  make(map[string]*User),
-			Sets:   make(map[string]int),
-			Key:    room,
-			format: "best",
-			reqs:   make(chan bool, MAX_PROCS),
+// based on https://husobee.github.io/golang/ip-address/2015/12/17/remote-ip-go.html
+func getIPAdress(r *http.Request) string {
+	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
+		addresses := strings.Split(r.Header.Get(h), ",")
+		for i := len(addresses) - 1; i >= 0; i-- {
+			ip := strings.TrimSpace(addresses[i])
+			realIP := net.ParseIP(ip)
+			if !realIP.IsGlobalUnicast() {
+				continue
+			}
+			return ip
 		}
-
-		for i := 0; i < MAX_PROCS; i++ {
-			R.reqs <- true
-		}
-
-		if err := os.Mkdir(room, os.ModeDir|0755); err != nil && !os.IsExist(err) {
-			log.Fatalln(err)
-		}
-
-		lock.Lock()
-		rooms[room] = R
-		lock.Unlock()
-
-		go R.statusMonitor()
 	}
-
-	return R
+	return ""
 }
 
 func connect(w http.ResponseWriter, r *http.Request, room *Room) {

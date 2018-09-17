@@ -5,13 +5,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/url"
-	"os"
-	"path"
 	"regexp"
 	"strings"
 )
 
-var cmdRe = regexp.MustCompile(`^/(\w+)(?:\s+(\w+))?`)
+var cmdRe = regexp.MustCompile(`^/(\w+)(?:\s+(.+)\s*)?`)
 
 func (p *Room) processCommands(u *User, msg string) bool {
 	log.Printf("User %q in %q wrote %q\n", u.key, p.Key, msg)
@@ -32,20 +30,20 @@ func (p *Room) processCommands(u *User, msg string) bool {
 
 	var arg string
 	parts := cmdRe.FindStringSubmatch(msg)
-	switch len(parts) {
-	case 2:
+	switch {
+	case parts[2] != "":
 		arg = parts[1]
 		fallthrough
-	case 1:
+	case parts[1] != "":
 		log.Printf("%s/%s: executed %s (%d)", p.Key, u.key, msg, len(parts))
-	case 0:
+	default:
 		return false
 	}
 
 	log.Println("Unlocking")
 	p.Lock()
-	log.Println("Unlocked")
 	defer p.Unlock()
+	log.Println("Unlocked")
 	switch parts[0] {
 	case "stats", "stat":
 		fi, err := ioutil.ReadDir(p.Key)
@@ -60,35 +58,16 @@ func (p *Room) processCommands(u *User, msg string) bool {
 		}
 
 		rq("All files require %.2f MiB", float64(sum)/(1<<20))
-	case "delete":
-		if arg == "" {
-			break
-		}
-
-		r, err := regexp.Compile(arg)
-		if err != nil {
-			break
-		}
-
-		for i, vid := range p.Videos {
-			if r.MatchString(vid) {
-				err := os.Remove(path.Join(p.Key, vid))
-				if err != nil {
-					rq("Failed to delete %s: %s", vid, err)
-					break
-				} else {
-					rq("Deleted %s", vid)
-				}
-
-				p.Videos = append(p.Videos[:i], p.Videos[i+1:]...)
-				p.notifyAll()
-			}
-		}
-
-		p.loadVideos()
-	case "u", "update":
-		p.loadVideos()
+	// case "delete":
+	// 	if arg != "" {
+	// 		p.del(arg, rq)
+	// 	}
+	// case "u", "update":
+	// 	p.loadVideos()
 	case "next", "n":
+		p.Watching = p.Queue[0]
+		p.Queue = p.Queue[1:]
+		p.update(0, true)
 		p.notifyAll()
 
 		for _, u := range p.Users {

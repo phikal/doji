@@ -4,7 +4,7 @@ import "math/rand"
 
 var (
 	chars  []byte
-	markov map[byte]map[byte]float64 = map[byte]map[byte]float64{
+	markov = map[byte]map[byte]float64{
 		'a': {
 			'a': 59.0 / 11380, 'i': 2093.0 / 11380, 'k': 843.0 / 11380,
 			'o': 84.0 / 11380, 's': 3760.0 / 11380, 'u': 1216.0 / 11380,

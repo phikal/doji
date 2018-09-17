@@ -3,77 +3,52 @@ package main
 import (
 	"io/ioutil"
 	"log"
-	"os"
 	"path"
 	"sync"
 )
 
-type Set []string
+// Set is a list of videos that is stored on the server, and can be
+// loaded or unloaded dynamically by users in a room
+type Set []*Video
+
+// func (s Set) Len() int           { return len(s) }
+// func (s Set) Less(i, j int) bool { return s[i].Name < s[j].Name }
+// func (s Set) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 var (
-	sets     map[string]Set
-	setNames []string
-	setLock  sync.Mutex
+	sets    map[string]*Set
+	setLock sync.Mutex
 )
 
-func (p *Room) toggleSet(setName string) error {
-	set, ok := sets[setName]
+func (p *Room) toggleSet(name string) {
+	set, ok := sets[name]
 	if !ok {
-		return nil
+		return
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
+	_, loaded := p.Sets[name]
+	p.Lock()
+	if loaded {
+		delete(p.Sets, name)
+	} else {
+		p.Sets[name] = set
 	}
-
-	// p.Lock()
-	defer p.loadVideos()
-	// defer p.Unlock()
-
-	_, loaded := p.Sets[setName]
-	log.Printf("Toggled set (%v) %q in %q", loaded, setName, p.Key)
-
-	if !loaded { // load
-		for _, v := range set {
-			err = os.Symlink(v, path.Join(wd, p.Key, path.Base(v)))
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-		}
-		p.Sets[setName] = len(set)
-	} else { // unload
-		for _, v := range set {
-			file := path.Join(wd, p.Key, path.Base(v))
-			if _, err = os.Stat(file); err == nil && file != p.Watching {
-				err = os.Remove(file)
-				if err != nil {
-					log.Println(err)
-					return err
-				}
-			}
-		}
-		delete(p.Sets, setName)
-	}
-	return nil
+	p.Unlock()
 }
 
-func loadSets(setDir string) error {
+func initSets() error {
 	setLock.Lock()
 	defer setLock.Unlock()
-	sets = make(map[string]Set)
-	setNames = nil
+	sets = make(map[string]*Set)
 
 	log.Println("Loading sets from ", setDir)
-	setDirs, err := ioutil.ReadDir(setDir)
+	dirs, err := ioutil.ReadDir(setDir)
 	if err != nil {
 		return err
 	}
 
-	for _, set := range setDirs {
+	for _, set := range dirs {
 		name := set.Name()
-		sets[name] = nil
 
 		s, err := ioutil.ReadDir(path.Join(setDir, name))
 		if err != nil {
@@ -81,11 +56,13 @@ func loadSets(setDir string) error {
 		}
 
 		for _, vid := range s {
-			sets[name] = append(sets[name], path.Join(setDir, name, vid.Name()))
+			*sets[name] = append(*sets[name], &Video{
+				Path: path.Join("/s/", name),
+				Set: name,
+				Name: vid.Name(),
+				Ready: true,
+			})
 		}
-
-		setNames = append(setNames, name)
-		log.Printf("Added set %q with %d items", name, len(sets[name]))
 	}
 
 	return nil

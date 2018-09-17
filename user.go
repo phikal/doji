@@ -4,6 +4,7 @@ import ws "github.com/gorilla/websocket"
 
 // User represents, and contains, a websocket connection
 type User struct {
+	id      uint32
 	key     string
 	conn    *ws.Conn
 	ignored bool
