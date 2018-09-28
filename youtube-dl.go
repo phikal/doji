@@ -28,7 +28,9 @@ func (p *Room) getVideo(url string) {
 
 	r := Video{Url: url}
 	p.Lock()
-	*p.Sets[""] = append(*p.Sets[""], &r)
+	var set = p.Sets[""]
+	*set = append(*set, &r)
+	p.Sets[""] = set
 	p.Unlock()
 
 	log.Printf("Downloading %s as %s", url, p.format)
@@ -38,6 +40,7 @@ func (p *Room) getVideo(url string) {
 		"--newline",
 		"--no-part",
 		"--restrict-filenames",
+		"--prefer-free-formats",
 		"-f", p.format,
 		"-o", path.Join(p.Key, "%(title)s-%(id)s.%(ext)s"),
 		url,

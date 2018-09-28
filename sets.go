@@ -55,14 +55,16 @@ func initSets() error {
 			return err
 		}
 
+		var S Set
 		for _, vid := range s {
-			*sets[name] = append(*sets[name], &Video{
-				Path: path.Join("/s/", name),
-				Set: name,
-				Name: vid.Name(),
+			S = append(S, &Video{
+				Path:  path.Join("/d/", name),
+				Set:   name,
+				Name:  vid.Name(),
 				Ready: true,
 			})
 		}
+		sets[name] = &S
 	}
 
 	return nil

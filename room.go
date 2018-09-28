@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 	"os"
+	"path"
 	"sync"
 	"time"
-	"path"
 )
 
 var (
@@ -19,11 +19,11 @@ var (
 type Room struct {
 	sync.Mutex // lock for .Users map
 
-	Key      string           // room's key pointing to this Parlor
-	Users    map[string]*User // users (id -> User) in this room
-	Queue    []*Video         // list of videos to be played after current one
-	Sets     map[string]*Set  // map (id -> size) of all loaded sets
-	Watching *Video           // video currently being watched
+	Key      string            // room's key pointing to this Parlor
+	Users    map[string]*User  // users (id -> User) in this room
+	Queue    []*Video          // list of videos to be played after current one
+	Sets     map[string](*Set) // map (id -> size) of all loaded sets
+	Watching *Video            // video currently being watched
 
 	format   string       // ytdl-format (-f) to use
 	notif    chan<- *User // send a status update to this user
@@ -40,14 +40,15 @@ func create(room string) *Room {
 	if R, ok = rooms[room]; !ok {
 		R = &Room{
 			Users:  make(map[string]*User),
-			Sets:   make(map[string]*Set),
+			Sets:   make(map[string](*Set)),
 			Key:    room,
 			format: "best",
 		}
 
 		err := os.Mkdir(path.Join(pwd, room), os.ModeDir|0755)
 		if err != nil {
-			log.Fatalln(err)
+			log.Println(err)
+			return nil
 		}
 
 		lock.Lock()
@@ -111,7 +112,7 @@ func (p *Room) cleaner() {
 	for _, s := range p.Sets {
 		for _, v := range *s {
 			if v.cmd != nil {
-				v.cmd.Process.Kill()				
+				v.cmd.Process.Kill()
 			}
 		}
 	}

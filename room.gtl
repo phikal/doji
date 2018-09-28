@@ -45,6 +45,7 @@
 			 padding: 4px;
 			 display: none;
 			 background: rgba(255,255,255, 0.5);
+			 max-width: calc(100%-8px);
 			 color: black;
 		 }
 		 #vid:hover #title { display: block; }
@@ -228,7 +229,6 @@
 				<input type="text"
 					   class="interact prompt bottom"
 					   id="prompt"
-					   disabled
 					   autofocus />
 			</div>
 
@@ -418,8 +418,7 @@
 					<h2>Legal</h2>
 					<p>
 						As <a target="_blank" rel="noopener noreferrer" href="https://www.gnu.org/philosophy/free-sw.en.html">Free Software</a>,
-						the source code is public and may be freely distrubted, under the under the
-						<a target="_blank" rel="noopener noreferrer" href="https://www.gnu.org/licenses/gpl-3.0.en.html">GPL 3</a> license.
+						the source code is public and has been places into the public domain, using the same license as <code>youtube-dl</code>.
 					</p>
 					<p>
 						The source can be found <a target="_blank" rel="noopener noreferrer" href="https://zge.us.to/git/doji/">here</a> and is
@@ -446,9 +445,10 @@
         <script>
          "use strict";
          const moffset = 0.38196601125; // maximal playback offset (sec)
-         const rwait = 50; // ms wait for website to react
+         const rwait = 50;    // ms wait for website to react
          const scint = 20000; // ms to wait between status requests
          const bufwait = 500; // ms to wait between buffering checks
+		 const lwait = 100;   // ms to wait before rechecking a lock
 
 		 function getElementById(id) {
 			 var elem = document.getElementById(id);
@@ -497,24 +497,17 @@
              if (sec === undefined || sec < 0)
                  return;
 
-			 if (remote) {
-				 setTimeout(_ => jump_to(sec), 100);
-				 return;
-			 }
-
              function jump() {
                  if (Math.abs(sec - video.currentTime) > moffset)
 					 video.currentTime = sec;
 
-				 /* if (video.readystate > 2) {
-					if (video.playing)
-					video.play();
-					else
-					video.pause();
-					}*/
-
-				 remote = false;
+				 if (video.readystate > 2) {
+					 if (video.playing)
+						 video.play();
+					 else video.pause();
+				 }
              }
+
              function check() {
                  var buf = video.seekable;
                  for (var i = 0; i < buf.length; i++) {
@@ -523,7 +516,8 @@
 					 } else setTimeout(check, bufwait);
                  }
              }
-             check();
+
+			 lock(check);
          }
 
          function load_video(vid) {
@@ -554,23 +548,23 @@
                  case "volume":
                      if (arg) {
                          video.volume = arg;
-                         log_msg({
-                             type: "event",
+                         log_msg("event", {
                              msg: "<em>set volume to " + (arg * 100) + "%</em>"
                          });
                      }
                      break;
 				 case "search":
 					 sfilter = arg || new RegExp(arg, "i");
+				 case "status":
 					 send("status");
 					 break;
+				 default:
+					 return false;
              }
              return true;
          }
 
          function load_status(data) {
-			 console.log(data);
-
              while(videos.firstChild)
                  videos.removeChild(videos.firstChild);
              if (data.vids)
@@ -624,41 +618,39 @@
 				 while(reqs.firstChild)
 					 reqs.removeChild(reqs.firstChild);
 				 data.reqs.map(r => {
-			 		 console.log(r);
-
 					 var canvas = document.createElement("canvas");
 					 var ctx = canvas.getContext("2d");
 					 ctx.fillStyle = "#da8";
 					 ctx.fillRect(0, 0, canvas.width  * r.progress, canvas.height);
 					 ctx.fillStyle = "#000";
 					 ctx.font = "14px monospace";
-					 ctx.fillText(r.url, 2, 15);
+					 ctx.fillText(r.url, 2, 2);
 					 reqs.appendChild(canvas);
-
-					 /* var tag = document.createElement("li");
-					  * tag.appendChild(document.createTextNode(r.url));
-					  * tag.style.background = "url(" + canvas.toDataURL() + ")";
-					  * reqs.appendChild(tag);*/
 				 });
 			 }
 
-			 if (!remote) {
-				 remote = true;
-
+			 lock(_ => {
 				 load_video(data.playing);
 				 jump_to(data.progress);
 
-				 console.log(video.paused, data.paused);
 				 if (video.paused && !data.paused)
 					 video.play();
 				 else if (!video.paused && data.paused)
 					 video.pause();
-				 remote = false;
-			 }
+			 });
          }
 
 		 var lastmsg;
-         function log_msg(msg) {
+         function log_msg(type_or_msg, msg) {
+			 if (!msg) {
+				 msg = type_or_msg;
+				 if (!msg.type)
+					 throw "invalid message";
+			 } else {
+				 if (type_or_msg)
+					 msg.type = type_or_msg;
+			 }
+
              var l = document.createElement("li");
              l.classList.add(msg.type);
              switch(msg.type) {
@@ -676,6 +668,8 @@
                      break;
                  case "seek":
                      var s = msg.val;
+					 if (!s)
+						 break;
                      var hour = ~~(s / 3600),
                          min  = ("0" + ~~(s / 60)).slice(-2),
                          sec  = ("0" + (s % 60)).slice(-2);
@@ -709,20 +703,35 @@
              log.appendChild(l);
              log.scrollTop = log.scrollHeight;
          }
-         var remote = true, seeking = false; /* hacked asf */
+         var remote = false; /* hacked asf */
          const socket = new WebSocket(location.href.replace(/http/, "ws") +
                                       "/socket");
 
-		 function send(type, msg) {
-			 if (conf.unhook)
+		 function lock(func) {
+			 if (!func)
+				 throw "locked with empty function";
+
+			 if (conf.unlock)
 				 return;
 
+			 if (remote) {
+				 setTimeout(_ => lock(func), lwait);
+			 } else {
+				 remote = true;
+				 func();
+				 setTimeout(_ => remote = false, rwait);
+			 }
+		 }
+
+		 function send(type, msg) {
 			 msg = msg || {};
 			 msg.type = type;
-			 if (socket.readyState < 1)
-				 setTimeout(0.1, _ => send(msg));
-			 else
-				 socket.send(JSON.stringify(msg));
+			 lock(_ => {
+				 if (socket.readyState < 1)
+					 setTimeout(0.1, _ => send(msg));
+				 else
+					 socket.send(JSON.stringify(msg));
+			 });
 		 }
 
 		 const save = _ => document.cookie = "conf=" +
@@ -774,51 +783,50 @@
 			 if (conf.unhook)
 				 return true;
 
-             remote = true;
-             var msg = JSON.parse(e.data);
+			 var msg = JSON.parse(e.data);
              var timestamp = new Date().toLocaleTimeString();
-             switch(msg.type) {
-                 case "pause":
-                     if (msg.from != user) {
-						 video.pause();
-						 jump_to(msg.val);
-					 }
-					 if (msg.msg)
-						 log_msg("Paused for " + msg.msg);
-
-                     break;
-                 case "play":
-                     if (msg.from != user && video.paused) {
-						 video.play();
-						 jump_to(msg.val);
-					 }
-                     break;
-                 case "seek":
-					 if (lastmsg.type == "seek" || msg.from == user)
-						 break;
-					 jump_to(msg.val);
-                     break;
-                 case "select":
-					 video.pause();
-                     load_video(msg.msg);
-                     break;
-				 case "load":
-					 for (var i = 0; i < sets.children.length; i++) {
-						 if (sets.children[i].innerText == msg.msg) {
-							 sets.children[i].classList.toggle("loaded");
-							 break;
+			 lock(_ => {
+				 switch(msg.type) {
+					 case "pause":
+						 if (msg.from != user) {
+							 video.pause();
+							 jump_to(msg.val);
 						 }
-					 }
-					 log_msg("Toggled set " + msg.msg)
-					 break;
-				 case "status":
-					 load_status(msg.data);
-					 break;
-			 }
-			 if (msg)
-				 lastmsg = msg;
-			 log_msg(msg);
-			 setTimeout(_ => remote = false, rwait);
+						 if (msg.msg)
+							 log_msg("event", { msg: "Paused for " + msg.msg });
+
+						 break;
+					 case "play":
+						 if (msg.from != user && video.paused) {
+							 video.play();
+							 jump_to(msg.val);
+						 }
+						 break;
+					 case "seek":
+						 if (lastmsg.type == "seek" || msg.from == user)
+							 break;
+						 jump_to(msg.val);
+						 break;
+					 case "select":
+						 video.pause();
+						 load_video(msg.msg);
+						 break;
+					 case "load":
+						 for (var i = 0; i < sets.children.length; i++) {
+							 if (sets.children[i].innerText == msg.msg) {
+								 sets.children[i].classList.toggle("loaded");
+								 break;
+							 }
+						 }
+						 break;
+					 case "status":
+						 load_status(msg.data);
+						 break;
+				 }
+				 if (msg)
+					 lastmsg = msg;
+				 log_msg(msg);
+			 });
          };
 
          // input events
@@ -834,51 +842,37 @@
          window.onbeforeunload = _ => socket.close();
 
          // setup
-         socket.onerror = err => log_msg({
-             type: "event",
-             msg: "<b>socket error:</b> <code>" + err + "</code>!"
-         });
-         socket.onclose = e => log_msg({
-             type: "event",
-             msg: "<em>socket" + (e.wasClean ? "" : " abruptly") +
-                  " closed with code " + e.code + "</em>"
-         });
+         socket.onerror = err => log_msg("event", {
+			 msg: "<b>socket error:</b> <code>" + err + "</code>!"
+		 });
+         socket.onclose = e => {
+			 if (false) {
+				 log_msg("event", {
+					 msg: "username already taken; reload page"
+				 });
+				 document.cookie = "";
+				 remote = true;
+			 } else log_msg("event", {
+				 msg: "<em>socket" + (e.wasClean ? "" : " abruptly") +
+					  " closed with code " + e.code + "</em>"
+			 });
+		 }
 
          // request data to load
          socket.onopen = e => {
-             prompt.disabled = false;
              var name = window.location.pathname.substring(1);
              var check = _ => send("status");
-             log_msg({
-                 type: "event",
+             log_msg("event", {
                  msg: "connected to <b>" + name + "</b> as <b>" + user + "</b>!"
              })
-             check();
-             setInterval(check, scint);
-
 
 			 // video events
-			 video.onpause = e => {
-				 if (remote || video.ended || conf.unhook)
-					 return true;
-				 send("pause", { val: video.currentTime });
-			 };
-			 video.onplay = e => {
-				 if (remote)
-					 return true;
-				 send("play", { val: video.currentTime });
-			 };
-			 video.onseeking = e => {
-				 if (remote)
-					 return true;
-				 seeking = true;
-				 send("seek", { val: video.currentTime });
-				 setTimeout(_ => seeking = false, bufwait);
-			 };
+			 video.onpause = e => send("pause", { val: video.currentTime });
+			 video.onplay = e => send("play", { val: video.currentTime });
+			 video.onseeking = e => send("seek", { val: video.currentTime });
 			 video.onended = _ => {
-				 remote = true;
 				 video.src = "";
-				 setTimeout(_ => send("next"), 2000);
+				 setTimeout(_ => send("next"), bufwait);
 			 };
 			 video.oncanplay = _ => {
 				 if (video.paused || !conf.unhook)
@@ -886,6 +880,8 @@
 			 };
 			 video.onstalled = _ => send("pause", { msg: user })
 
+			 check();
+             setInterval(check, scint);
          };
         </script>
     {{ else }}

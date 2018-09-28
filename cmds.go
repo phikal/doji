@@ -64,6 +64,8 @@ func (p *Room) processCommands(u *User, msg string) bool {
 	// 	}
 	// case "u", "update":
 	// 	p.loadVideos()
+	case "progress":
+		rq("Playing %q at %f", p.Watching.Name, p.Progress())
 	case "next", "n":
 		p.Watching = p.Queue[0]
 		p.Queue = p.Queue[1:]

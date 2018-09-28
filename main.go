@@ -83,7 +83,7 @@ func main() {
 	log.SetFlags(log.Ltime | log.LUTC | log.Lshortfile)
 	if os.Getenv("DEBUG") == "" {
 		file := path.Join(pwd, "log")
-		l, err := os.OpenFile(file, os.O_APPEND|os.O_WRONLY, 0644)
+		l, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Fatalln(err)
 		}
