@@ -45,6 +45,16 @@ func (p *Room) processCommands(u *User, msg string) bool {
 	defer p.Unlock()
 	log.Println("Unlocked")
 	switch parts[0] {
+	case "unmute":
+		u.msg <- Msg{
+			Type: msgVol,
+			Val:  1,
+		}
+	case "mute":
+		u.msg <- Msg{
+			Type: msgVol,
+			Val:  0,
+		}
 	case "stats", "stat":
 		fi, err := ioutil.ReadDir(p.Key)
 		if err != nil {
