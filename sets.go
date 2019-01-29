@@ -41,6 +41,18 @@ func initSets() error {
 	defer setLock.Unlock()
 	sets = make(map[string]*Set)
 
+	setDir := os.Getenv("SETDIR")
+	if setDir != "" {
+		var err error
+		setDir, err = filepath.Abs(setDir)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	} else {
+		log.Println("no sets loaded")
+		return nil
+	}
+
 	log.Println("Loading sets from ", setDir)
 	dirs, err := ioutil.ReadDir(setDir)
 	if err != nil {

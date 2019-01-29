@@ -104,18 +104,9 @@ func main() {
 	}
 
 	// setup sets
-	setDir = os.Getenv("SETDIR")
-	if setDir != "" {
-		var err error
-		setDir, err = filepath.Abs(setDir)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		err = initSets()
-		if err != nil {
-			log.Fatalln(err)
-		}
+	err = initSets()
+	if err != nil {
+		log.Fatalln(err)
 	}
 
 	// process signals
