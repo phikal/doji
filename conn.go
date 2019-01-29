@@ -15,7 +15,7 @@ var idCounter uint32
 type Msg struct {
 	Type string      `json:"type"`
 	Msg  string      `json:"msg,omitempty"`
-	Val  float64     `json:"val,omitempty"`
+	Val  int64       `json:"val,omitempty"`
 	From string      `json:"from,omitempty"`
 	Data interface{} `json:"data,omitempty"`
 }
@@ -31,13 +31,12 @@ func (p *Room) processMsg(msg Msg, user *User) {
 		}
 		msg.Msg = html.EscapeString(msg.Msg)
 	case msgPlay:
-		p.update(msg.Val, false)
+		p.update(time.Duration(msg.Val), false)
 	case msgPause, msgSeek:
-		p.update(msg.Val, true)
+		p.update(time.Duration(msg.Val), true)
 	case msgSelect:
-		set, ok := p.Sets[msg.Msg]
-		if ok {
-			p.Watching = (*set)[int(msg.Val)]
+		if msg.Val >= 0 && msg.Val < int64(len(p.Videos)) {
+			p.Watching = p.Videos[msg.Val]
 			p.update(0, true)
 		}
 	case msgLoad:
@@ -53,18 +52,14 @@ func (p *Room) processMsg(msg Msg, user *User) {
 
 		p.Queue = append(p.Queue[:i], p.Queue[i+1:]...)
 	case msgPush:
-		set, ok := p.Sets[msg.Msg]
-		if !ok {
-			break
-		}
-
-		video := (*set)[int(msg.Val)]
-		if p.Watching == nil {
-			msg.Type = msgSelect
-			p.Watching = video
-			p.update(0, true)
-		} else {
-			p.Queue = append(p.Queue, video)
+		if msg.Val >= 0 && msg.Val < int64(len(p.Videos)) {
+			if p.Watching == nil {
+				msg.Type = msgSelect
+				p.Watching = p.Videos[msg.Val]
+				p.update(0, true)
+			} else {
+				p.Queue = append(p.Queue, p.Videos[msg.Val])
+			}
 		}
 	case msgNext:
 		if len(p.Queue) == 0 {
@@ -96,7 +91,7 @@ func (p *Room) processMsg(msg Msg, user *User) {
 		}
 		if !ready {
 			msg.Type = msgPlay
-			msg.Val = p.Progress()
+			msg.Val = int64(p.progress())
 
 			for _, user := range p.Users {
 				user.ready = false
