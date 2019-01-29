@@ -109,6 +109,21 @@ func (p *Room) processCommands(u *User, msg string) bool {
 		} else {
 			rq("you can't op someone if you aren't an op")
 		}
+	case "lock", "unlock":
+		if u.oper {
+			p.Lock()
+			p.locked = !p.locked
+			p.Unlock()
+
+			if p.locked {
+				rq("room locked")
+			} else {
+				rq("room unlocked")
+			}
+			p.notifyAll()
+		} else {
+			rq("you must be op to (un-)lock a room")
+		}
 	default:
 		rq("No such command %q", parts[0])
 	}
