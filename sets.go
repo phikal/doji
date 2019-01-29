@@ -26,12 +26,12 @@ func (p *Room) toggleSet(name string) {
 		return
 	}
 
-	_, loaded := p.Sets[name]
+	loaded := p.Sets[set]
 	p.Lock()
 	if loaded {
-		delete(p.Sets, name)
+		delete(p.Sets, set)
 	} else {
-		p.Sets[name] = set
+		p.Sets[set] = true
 	}
 	p.Unlock()
 }

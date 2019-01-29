@@ -5,42 +5,59 @@ import (
 	"os"
 	"path"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 var (
 	// id -> room map and global lock
 	rooms = make(map[string]*Room)
-	lock  = &sync.Mutex{}
+	lock  sync.Mutex
 )
 
 // Room stores the current state of the room, as well as the users (in
 // a map) and further internal data
 type Room struct {
-	sync.Mutex // lock for .Users map
+	sync.Mutex // lock for .Users/.Sets map
 
-	Key      string            // room's key pointing to this Parlor
-	Users    map[string]*User  // users (id -> User) in this room
-	Queue    []*Video          // list of videos to be played after current one
-	Sets     map[string](*Set) // map (id -> size) of all loaded sets
-	Watching *Video            // video currently being watched
+	// room's key pointing to this Parlor
+	Key string
 
-	format   string       // ytdl-format (-f) to use
-	notif    chan<- *User // send a status update to this user
-	clear    chan<- *User // informs server to clean up after a user
-	progress float64      // seconds into current video
-	paused   bool         // is current video paused
-	updated  time.Time    // last status update received
+	// map (id -> User) of users in this room
+	Users map[uint32]*User
+
+	// list of videos in this room
+	Videos []*Video
+
+	// list of videos to be played after
+	// current one (Queue ⊆ Videos)
+	Queue []*Video
+
+	// map (set -> exists) of sets currently loaded in this room
+	Sets map[*Set]bool
+
+	// video currently being watched
+	Watching *Video
+
+	format  string        // ytdl-format (-f) to use
+	notif   chan<- *User  // send a status update to this user
+	clear   chan<- *User  // informs server to clean up after a user
+	progrs  time.Duration // seconds into current video
+	paused  bool          // is current video paused
+	locked  bool          // can only OPs change room state
+	updated time.Time     // last status update received
+	state   sync.Mutex    // lock to change room state
+	gencnt  uint32        // generation counter for room-state changes
 }
 
 func create(room string) *Room {
 	var R *Room
 	var ok bool
 
-	if R, ok = rooms[room]; !ok {
+	if _, ok = rooms[room]; !ok {
 		R = &Room{
-			Users:  make(map[string]*User),
-			Sets:   make(map[string](*Set)),
+			Users:  make(map[uint32]*User),
+			Sets:   make(map[*Set]bool),
 			Key:    room,
 			format: "best",
 		}
@@ -61,18 +78,25 @@ func create(room string) *Room {
 	return R
 }
 
-func (p *Room) update(progress float64, paused bool) {
-	p.progress = progress
-	p.paused = paused
-	p.updated = time.Now()
+func (p *Room) update(progress time.Duration, paused bool) {
+	gen := p.gencnt
+
+	p.state.Lock()
+	if atomic.CompareAndSwapUint32(&p.gencnt, gen, p.gencnt+1) {
+		p.paused = paused
+		p.updated = time.Now()
+
+		time.Sleep(time.Millisecond * 250)
+	}
+	p.state.Unlock()
 }
 
-func (p *Room) Progress() float64 {
+func (p *Room) progress() time.Duration {
 	if p.paused {
-		return p.progress
-	} else {
-		return p.progress + time.Since(p.updated).Seconds()
+		return p.progrs
 	}
+
+	return p.progrs + time.Since(p.updated)
 }
 
 func (p *Room) notifyAll() {
@@ -109,12 +133,11 @@ func (p *Room) cleaner() {
 		log.Panicln(err)
 	}
 
-	for _, s := range p.Sets {
+	for s := range p.Sets {
 		for _, v := range *s {
 			if v.cmd != nil {
 				v.cmd.Process.Kill()
 			}
 		}
 	}
-
 }
