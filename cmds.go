@@ -90,6 +90,25 @@ func (p *Room) processCommands(u *User, msg string) bool {
 			p.format = arg
 		}
 		rq("Set format to %q", p.format)
+	case "op", "oper", "operator":
+		if arg == "" {
+			rq(fmt.Sprintf("is operator: %t", u.oper))
+			break
+		}
+
+		if u.oper {
+			for _, user := range p.Users {
+				if user.Name == arg {
+					user.oper = true
+					p.notifyAll()
+					break
+				}
+			}
+
+			rq("op: No such user")
+		} else {
+			rq("you can't op someone if you aren't an op")
+		}
 	default:
 		rq("No such command %q", parts[0])
 	}
