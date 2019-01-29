@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 
 	ws "github.com/gorilla/websocket"
@@ -28,20 +29,26 @@ var (
 	roomRe = regexp.MustCompile(`^[a-z.]{2,}`)
 )
 
-// based on https://husobee.github.io/golang/ip-address/2015/12/17/remote-ip-go.html
-func getIPAdress(r *http.Request) string {
+// getIPAddress is adapted with minor alterations from this site:
+// https://husobee.github.io/golang/ip-address/2015/12/17/remote-ip-go.html
+func getIPAddress(r *http.Request) string {
 	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
-		addresses := strings.Split(r.Header.Get(h), ",")
-		for i := len(addresses) - 1; i >= 0; i-- {
-			ip := strings.TrimSpace(addresses[i])
-			realIP := net.ParseIP(ip)
-			if !realIP.IsGlobalUnicast() {
-				continue
+		for _, ip := range strings.Split(r.Header.Get(h), ",") {
+			ip = strings.TrimSpace(ip)
+			if net.ParseIP(ip).IsGlobalUnicast() {
+				return ip
 			}
-			return ip
 		}
 	}
-	return ""
+
+	// if there is a port number in the address, get rid of it
+	parts := strings.Split(r.RemoteAddr, ":")
+	if len(parts) > 1 {
+		if _, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
+			parts = parts[:len(parts)-1]
+		}
+	}
+	return strings.Join(parts, ":")
 }
 
 func connect(w http.ResponseWriter, r *http.Request, room *Room) {
