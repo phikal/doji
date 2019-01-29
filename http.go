@@ -74,7 +74,7 @@ func room(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/":
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := tmpl.ExecuteTemplate(w, "room", nil); err != nil {
+		if err := tmpl.ExecuteTemplate(w, "room.gtl", nil); err != nil {
 			log.Fatal(err)
 		}
 	case strings.HasSuffix(r.URL.Path, "/socket"):
@@ -87,7 +87,7 @@ func room(w http.ResponseWriter, r *http.Request) {
 	case roomRe.MatchString(room):
 		log.Printf("%q joined room %q", "user", room)
 		p := create(room)
-		if err := tmpl.ExecuteTemplate(w, "room", p); err != nil {
+		if err := tmpl.ExecuteTemplate(w, "room.gtl", p); err != nil {
 			log.Fatal(err)
 		}
 	}

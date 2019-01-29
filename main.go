@@ -1,6 +1,6 @@
 package main
 
-//go:generate go-bindata -o templ.go room.gtl
+//go:generate go-bindata -o templ.go static/...
 
 import (
 	"html/template"
@@ -92,13 +92,15 @@ func main() {
 	}
 
 	// load templates
-	asset, err := Asset("room.gtl")
-	if err != nil {
-		log.Fatalln(err)
-	} else {
-		tmpl = template.Must(template.New("room").
-			Funcs(template.FuncMap{"rndname": rndName}).
-			Parse(string(asset)))
+	tmpl = tmpl.Funcs(template.FuncMap{"rndname": rndName})
+	for _, file := range []string{
+		"room.gtl", "help.gtl", "info.gtl", "script.js",
+	} {
+		asset, err := Asset(path.Join("static", file))
+		if err != nil {
+			log.Fatalln(err)
+		}
+		tmpl = template.Must(tmpl.New(file).Parse(string(asset)))
 	}
 
 	// setup sets
