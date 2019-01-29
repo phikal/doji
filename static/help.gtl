@@ -1,0 +1,146 @@
+<div id="help" class="text">
+	<h1>Built-in Manual</h1>
+
+	<h2>General Usage</h2>
+	<p>
+		doji is used in Browsers with HTML5 and ES6 compatibility. If
+		you can read this manual, everything is probably ok.
+	</p>
+	<p>
+		The UI consist of the following main elements:
+	</p>
+	<ul>
+		<li>
+			<strong>Black box, top:</strong>
+			This is the <em>video box</em>. Besides a
+			<a target="_blank" rel="noopener noreferrer" href="https://en.wikipedia.org/wiki/HTML5_video">HTML5 video</a>,
+			nothing should be found here.
+		</li>
+		<li>
+			<strong>Blue box, bottom left:</strong>
+			This is the <em>message box</em>. Messages
+			about the state of the room will be
+			displayed here.
+		</li>
+		<li>
+			<strong>Pink box, center right:</strong>
+			This is the <em>options box</em>.
+			It contains multiple tabs (you're currently
+			in the <em>help</em> tab) that let you operate
+			doji. For more details see <em>FQA</em>.
+		</li>
+		<li>
+			<strong>Yellow box, bottom right:</strong>
+			This is the <em>downloads box</em>.
+			You'll how far the currently requested videos
+			have been downloaded.
+		</li>
+	</ul>
+
+
+	<h2>FQA <sup>(Frequently Questioned Answers)</sup></h2>
+	<dl>
+		<dt><em>How do I play a video?</em></dt>
+		<dd>
+			Go to the <em>videos</em> tab, click on a
+			file name. This should automatically load
+			the video, but <strong>not</strong> start
+			playing it. The user must to this manually.
+		</dd>
+
+		<dt><em>How do I add a video?</em></dt>
+		<dd>
+			Just drop any URL (without any commands or comments) into the message box.
+			A message should pop up mentioning that you've added the video, and
+		</dd>
+
+		<dt><em>Why aren't videos played immediately?</em></dt>
+		<dd>
+			Instead of directly connecting to the forign
+			site, doji downloads the video you requested
+			to it's server, and then hosts this video for
+			everyone in the room. It is this process of
+			downloading that take a short while.
+		</dd>
+
+		<dt><em>How do I remove a video?</em></dt>
+		<dd>
+			See <code>/delete</code> command.
+		</dd>
+
+		<dt><em>What is the queue?</em></dt>
+		<dd>
+			The queue is a list of videos which will be
+			automatically started as soon as the current
+			video finishes. New videos are added to the end,
+			the next video is taken from the top.
+			<br/>
+			See <code>/next</code>, <code>/pop</code>,
+			<code>/enqueue</code>.
+		</dd>
+
+		<dt><em>What are sets?</em></dt>
+		<dd>
+			<q>Sets</q> let users automatically add or remove
+			related videos (such as a playlist, series, etc.)
+			that have been set up by the server administrator.
+			<br/>
+			Note that if a server has no sets, the <q>sets</q>
+			tab is not displayed.
+		</dd>
+	</dl>
+
+	<p>
+		More questions and answers can be found on doji's
+		<a href="https://zge.us.to/proj/doji/">homepage</a>.
+	</p>
+
+	<h2>Commands</h2>
+	<p>
+		All commands are entered into the chat box
+		(white field under the messages, in the blue
+		area). doji recognizes a command when it's
+		prefixed with a forwards slash (<code>/</code>),
+		and interprets all the following words, delemitered
+		by one or more whitespaces as it's arguments.
+	</p>
+	<p>
+		Most <q>more complex</q> interaction with doji is done
+		using these commands, but most users can comfortably use
+		it without any knowledge about these.
+	</p>
+	<p>
+		For everyday options, use the settings tab (right next to
+		this one). Note that everything that can be done there, can
+		also be achieved using commands.
+	</p>
+	<p>
+		The following list gives an overfiew of all the supported
+		commands:
+	</p>
+	<dl>
+		<dt><code>/stats</code>, <code>/stat</code></dt>
+		<dd>Print the current aggregate file size of all
+			the loaded videos.</dd>
+
+		<dt><code>/update</code>, <code>/u</code></dt>
+		<dd>Force-refresh the list of all videos in the
+			current room for all users.</dd>
+
+		<dt><code>/format [arg]</code>, <code>/f</code></dt>
+		<dd>Automatically skip to the next video in the
+			queue, without waiting to finish the current one.</dd>
+
+		<dt><code>/next</code>, <code>/n</code></dt>
+		<dd>Skip the current video in the queue, and
+			start playing the next one.</dd>
+
+		<dt><code>/volume [arg]</code> (local)</dt>
+		<dd>Set the volume of the video player. <code>0</code>
+			mutes the steam, <code>1</code> is the loudest.</dd>
+
+		<dt><code>/search [arg]</code> (local)</dt>
+		<dd>Only display all the sets that match
+			<code>[arg]</code> as a regular expression.</dd>
+	</dl>
+</div>

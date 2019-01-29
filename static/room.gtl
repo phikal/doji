@@ -1,0 +1,293 @@
+<!doctype html>
+<html>
+    {{ with . }}
+	<title>doji [{{ .Key }}]</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="referrer" content="none" />
+    <style>
+     body {
+         width: 700px;
+         height: 700px;
+         margin: 1em auto 0 auto;
+         position: relative;
+		 font-family: "Open Sans", "Nono Sans", Tahoma, Geneva, sans-serif;
+     }
+
+	 code {
+		 font-family: Consolas, Monaco, monospace, monospace;
+		 color: #262;
+		 display: inline-block;
+		 word-break: break-all;
+	 }
+
+     .box { border: 2px solid black; }
+
+	 #vid, #msgs, #opts, #reqs { position: absolute; }
+
+	 #vid {
+		 top: 0;
+		 left: 0;
+		 width: 696px;
+		 height: 296px;
+		 background: black;
+	 }
+	 #vid video {
+		 display: block;
+		 margin: auto;
+		 height: 100%;
+		 max-width: 100%;
+	 }
+	 #vid #title {
+		 position: absolute;
+		 top: 4px;
+		 right: 4px;
+		 padding: 4px;
+		 display: none;
+		 background: rgba(255,255,255, 0.5);
+		 max-width: calc(100%-8px);
+		 color: black;
+	 }
+	 #vid:hover #title { display: block; }
+
+	 #msgs {
+		 top: 300px;
+		 left: 0;
+		 width: 296px;
+		 height: 396px;
+		 background: #bef;
+	 }
+	 #msgs > .hl { background: #8ad }
+
+	 #opts {
+		 top: 300px;
+		 left: 300px;
+		 width: 396px;
+		 height: 296px;
+		 background: #fbe;
+	 }
+	 #opts > .hl { background: #d8a; }
+
+	 #reqs {
+		 top: 600px;
+		 left: 300px;
+		 width: 396px;
+		 height: 96px;
+		 background: #feb;
+		 display: flex;
+		 flex-direction: column;
+	 }
+	 #reqs > canvas {
+		 width: 100%;
+		 height: 18px;
+		 border-bottom: 1px solid #da8;
+	 }
+
+	 ::-webkit-scrollbar { width: 8px; }
+	 ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+	 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.25); }
+
+	 ul.list, .text {
+		 overflow-x: hidden;
+		 overflow-y: auto;
+		 list-style: none;
+		 padding: 0;
+		 margin: 0;
+	 }
+	 #opts ul.list li { word-break: break-all; }
+
+	 ul.hlist {
+		 overflow-x: auto;
+		 overflow-y: hidden;
+		 list-style: none;
+		 display: flex;
+		 padding: 0;
+		 margin: 0;
+	 }
+	 ul.hlist > li {
+		 display: inline-table;
+		 border-right: 1px solid black;
+		 font-size: 15px;
+		 padding: 0 4px;
+		 margin: 0;
+	 }
+
+	 .text { padding: 0.5em; }
+	 .text h1, .text h2, text h3, .text h4, .text hr {
+		 margin: 0;
+		 border-width: 0;
+		 border-bottom: 1px solid rgba(0,0,0,0.5);
+		 font-variant: small-caps;
+	 }
+	 .text h1 { font-size: 120%; }
+	 .text h2 { font-size: 110%; }
+	 .text h3 { font-size: 105%; }
+	 .text h4 { font-size: 100%; }
+	 .text hr { margin-bottom: 1em; border-style: dashed; }
+	 .text p, .text li, .text dd { margin-top: 8px; text-align: justify; }
+	 .text a { color: #039; }
+	 .text code {
+		 background: rgba(50,200,50,0.1);
+		 padding: 2px 4px;
+		 border-radius: 2px;
+	 }
+
+	 .box.bottom, .box.top { position: relative; }
+	 .box.top ul, .box.bottom ul { max-height: calc(100% - 18px); }
+	 .box.top.bottom ul.list, .box.top .text, .box.bottom .text {
+		 max-height: calc(100% - 34px);
+	 }
+	 .box.top ul.list, .box.top .text  { margin-top: 18px; }
+	 .box.bottom ul.list, .box.bottom .text  { margin-bottom: 18px; }
+
+	 .interact {
+		 position: absolute;
+		 left: 0;
+		 right: 0;
+		 border: 0 solid black;
+		 padding: 0;
+		 background: white;
+		 width: 100%;
+		 height: 17px;
+	 }
+	 .interact.bottom { border-top-width: 1px; bottom: 0; }
+	 .interact.top { border-bottom-width: 1px; top: 0; }
+
+	 .interact, #opts > ul > li {
+		 -webkit-user-select: none; /* Safari */
+		 -moz-user-select: none; /* Firefox */
+		 -ms-user-select: none; /* IE10+/Edge */
+		 user-select: none; /* Standard */
+	 }
+
+	 #msgs > ul.hlist, #msgs > ul.list li:nth-child(even) { background: #8ad; }
+	 #opts > ul.hlist, #opts > ul.list li:nth-child(even) { background: #d8a; }
+
+	 ul.choices > li { cursor: pointer; }
+	 ul.choices > li:hover { background: rgba(0,0,0,.2) !important; }
+	 ul > .choice { background: rgba(0,0,0,0.2); }
+
+	 ul#sets > li.loaded { font-weight: bold; }
+	 ul#set > #set-filter {
+		 width: 100%;
+		 border: 0px solid black;
+		 height: 20px;
+		 border-bottom-width: 1px;
+	 }
+
+	 #settings {
+		 padding: 0;
+		 border-collapse: collapse;
+		 width: 100%;
+	 }
+	 #settings tr {
+		 border-bottom: 1px solid #d8a;
+	 }
+	 #settings td {
+		 width: calc(50% - 10px);
+		 padding: 2px;
+	 }
+	 #settings td:nth-child(2) { text-align: right; }
+	 #settings tr:hover { background: rgba(0,0,0,1.) !important; }
+
+	 .dlds {
+
+	 }
+
+     @media only screen and (max-width: 700px) {
+		 body, html {
+			 height: unset;
+			 border-width: 0;
+			 width: 100%;
+			 min-width: initial;
+			 margin: 0;
+			 padding: 0;
+		 }
+
+		 #vid, #msgs, #opts, #reqs {
+			 position: relative;
+			 width: 100%;
+			 height: auto;
+			 min-height: 50px;
+			 max-height: 300px;
+			 top: unset;
+			 left: unset;
+		 }
+     }
+    </style>
+    <body class="box">
+        <div id="vid" class="box">
+			<span id="title">doji v2</span>
+            <video id="video" controls preload>
+                Oh no! This browser doesn’t support HTML video.
+            </video>
+        </div>
+
+		<div id="msgs" class="box top bottom">
+			<ul id="usr" class="interact hlist top"></ul>
+			<ul id="msg" class="list"></ul>
+			<input type="text"
+				   class="interact prompt bottom"
+				   id="prompt"
+				   autofocus />
+		</div>
+
+		<div id="opts" class="box bottom">
+			<ul class="interact hlist choices bottom">
+				<li id="videos-b">videos</li>
+				<li id="queue-b">queue</li>
+				<li id="sets-b">sets</li>
+				<li id="settings-b">settings</li>
+				<li id="help-b">help</li>
+				<li id="info-b">info</li>
+			</ul>
+
+			<ul id="videos" class="list choices"></ul>
+			<ul id="queue" class="list choices"></ul>
+			<ul id="sets" class="list choices"></ul>
+
+			<table id="settings"><tbody id="setbody">
+			</tbody></table>
+
+			{{ template "help.gtl" }}
+			{{ template "info.gtl" }}
+		</div>
+
+		<div id="reqs" class="box"></div>
+	</body>
+
+	<script>
+		{{ template "script.js" }}
+	</script>
+    {{ else }}
+	<title>doji</title>
+    <meta charset="utf-8" />
+    <meta name="referrer" content="none" />
+    <meta name="viewport" content="width=device-width" />
+    <style>
+	 body {
+		 text-align: center;
+         margin: 20vh auto 0 auto;
+		 font-size: 1.5em;
+         display: table;
+	 }
+
+	 #open {
+		 background: blue;
+		 border: 7.5px outset blue;
+		 color: white;
+		 padding: 0.5em;
+		 display: inline-block;
+		 text-decoration: none;
+		 border-radius: 0.5em;
+	 }
+
+	 #open:hover { border-style: inset; }
+    </style>
+	<a href="{{ rndname }}"
+	   title="create a doji room"
+	   id="open">
+		(☞ﾟヮﾟ)☞
+	</a>
+    {{ end }}
+</html>
