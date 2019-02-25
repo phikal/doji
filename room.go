@@ -106,7 +106,7 @@ func (p *Room) notifyAll() {
 
 // clean up after a user, and if the room stays empty, delete it too
 func (p *Room) cleaner() {
-	clear := make(chan *User, 4)
+	clear := make(chan *User, 16)
 	p.clear = clear
 	for {
 		user := <-clear
@@ -121,7 +121,11 @@ func (p *Room) cleaner() {
 		}
 
 		if len(p.Users) == 0 {
-			break
+			// if room is still empty after 30 seconds, delete it
+			time.Sleep(time.Second * 30)
+			if len(p.Users) == 0 {
+				break
+			}
 		}
 	}
 

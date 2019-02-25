@@ -104,35 +104,32 @@ func (p *Room) processMsg(msg Msg, user *User) {
 // well as start a goroutine to coordinate outgoing messages
 func (p *Room) processConn(conn *ws.Conn, userName string) {
 	user := &User{
-		id:   atomic.AddUint32(&idCounter, rand.Uint32()%(1<<12)),
+		ID:   atomic.AddUint32(&idCounter, rand.Uint32()%(1<<10)),
+		Name: userName,
+		key:  fmt.Sprintf("%x", rand.Uint32()%(1<<22)+(1<<10)),
 		conn: conn,
-		key:  userName,
 	}
 
 	p.Lock()
-	if _, ok := p.Users[userName]; ok {
-		conn.Close()
-		p.Unlock()
-		return
-	}
-
-	p.Users[userName] = user
+	p.Users[user.ID] = user
 	p.Unlock()
 
 	go user.talker()
-	go p.cleaner()
 
-	defer func() {
-		p.clear <- user
-	}()
+	defer conn.Close()
 
 	for {
 		msg := Msg{Val: -1}
 		err := conn.ReadJSON(&msg)
 		if err != nil {
+			if err != ws.ErrCloseSent {
+				log.Printf("socket %d [%s] encountered fatal error: %s",
+					user.ID, userName, err)
+			}
+			p.clear <- user
 			return
 		}
-		log.Printf("Received message %#v from %q in %q", msg, user.id, p.Key)
+		log.Printf("Received message %#v from %q in %q", msg, user.Name, p.Key)
 
 		// interpret message
 		p.processMsg(msg, user)
