@@ -14,7 +14,7 @@ func (p *Room) status() {
 
 		msg.Data = map[string]interface{}{
 			"sets":     sets,
-			"lsets":    p.Sets,
+			"loaded":   p.Sets,
 			"queue":    p.Queue,
 			"users":    p.Users,
 			"paused":   p.paused,

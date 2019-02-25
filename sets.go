@@ -3,17 +3,20 @@ package main
 import (
 	"io/ioutil"
 	"log"
+	"os"
 	"path"
+	"path/filepath"
+	"sort"
+	"strconv"
 	"sync"
 )
 
 // Set is a list of videos that is stored on the server, and can be
 // loaded or unloaded dynamically by users in a room
-type Set []*Video
-
-// func (s Set) Len() int           { return len(s) }
-// func (s Set) Less(i, j int) bool { return s[i].Name < s[j].Name }
-// func (s Set) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+type Set struct {
+	id      string
+	content []*Video
+}
 
 var (
 	sets    map[string]*Set
@@ -26,12 +29,14 @@ func (p *Room) toggleSet(name string) {
 		return
 	}
 
-	loaded := p.Sets[set]
+	i := sort.Search(len(p.Sets),
+		func(i int) bool { return p.Sets[i] == set })
+
 	p.Lock()
-	if loaded {
-		delete(p.Sets, set)
+	if i < len(p.Sets) && p.Sets[i] == set {
+		p.Sets = append(p.Sets[:i], p.Sets[i+1:]...)
 	} else {
-		p.Sets[set] = true
+		p.Sets = append(p.Sets, set)
 	}
 	p.Unlock()
 }
@@ -59,6 +64,7 @@ func initSets() error {
 		return err
 	}
 
+	var id int
 	for _, set := range dirs {
 		name := set.Name()
 
@@ -67,9 +73,9 @@ func initSets() error {
 			return err
 		}
 
-		var S Set
+		var S Set = Set{id: strconv.Itoa(id)}
 		for _, vid := range s {
-			S = append(S, &Video{
+			S.content = append(S.content, &Video{
 				Path:  path.Join("/d/", name),
 				Set:   name,
 				Name:  vid.Name(),
@@ -77,6 +83,7 @@ func initSets() error {
 			})
 		}
 		sets[name] = &S
+		id += 1
 	}
 
 	return nil

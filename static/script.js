@@ -166,7 +166,7 @@ function load_status(data) {
 
             var vid = document.createElement("li");
             vid.appendChild(document.createTextNode(s));
-			if (s in data.lsets)
+			if (data.loaded && s in data.loaded)
 				vid.classList.add("loaded");
             vid.onclick = _ => send("load", { msg: s });
             sets.appendChild(vid);

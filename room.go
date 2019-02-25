@@ -33,8 +33,8 @@ type Room struct {
 	// current one (Queue ⊆ Videos)
 	Queue []*Video
 
-	// map (set -> exists) of sets currently loaded in this room
-	Sets map[*Set]bool
+	// list of loaded sets
+	Sets []*Set
 
 	// video currently being watched
 	Watching *Video
@@ -51,13 +51,11 @@ type Room struct {
 }
 
 func create(room string) *Room {
-	var R *Room
-	var ok bool
+	p, ok := rooms[room]
 
-	if _, ok = rooms[room]; !ok {
-		R = &Room{
+	if !ok {
+		p = &Room{
 			Users:  make(map[uint32]*User),
-			Sets:   make(map[*Set]bool),
 			Key:    room,
 			format: "best",
 		}
@@ -69,13 +67,14 @@ func create(room string) *Room {
 		}
 
 		lock.Lock()
-		rooms[room] = R
+		rooms[room] = p
 		lock.Unlock()
 
-		go R.status()
+		go p.cleaner()
+		go p.status()
 	}
 
-	return R
+	return p
 }
 
 func (p *Room) update(progress time.Duration, paused bool) {
@@ -133,8 +132,8 @@ func (p *Room) cleaner() {
 		log.Panicln(err)
 	}
 
-	for s := range p.Sets {
-		for _, v := range *s {
+	for _, s := range p.Sets {
+		for _, v := range s.content {
 			if v.cmd != nil {
 				v.cmd.Process.Kill()
 			}

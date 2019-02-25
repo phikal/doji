@@ -1,6 +1,10 @@
 package main
 
-import ws "github.com/gorilla/websocket"
+import (
+	"log"
+
+	ws "github.com/gorilla/websocket"
+)
 
 // User represents, and contains, a websocket connection
 type User struct {
@@ -19,6 +23,10 @@ func (u *User) talker() {
 	c := make(chan Msg, 16)
 	u.msg = c
 	for {
-		u.conn.WriteJSON(<-c)
+		data := <-c
+		log.Printf("Sent message to %x [%s]: %v", u.ID, u.Name, data)
+		if err := u.conn.WriteJSON(data); err != nil {
+			log.Println(err)
+		}
 	}
 }
